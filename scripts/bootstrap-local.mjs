@@ -26,6 +26,9 @@ try {
   await pool.query('GRANT SELECT, INSERT ON payment_events TO ligado_pay_runtime');
   await pool.query('GRANT SELECT, INSERT ON outbox TO ligado_pay_runtime');
   await pool.query('GRANT UPDATE(delivered_at,attempts) ON outbox TO ligado_pay_runtime');
+  await pool.query('GRANT SELECT, INSERT ON checkout_notifications TO ligado_pay_runtime');
+  await pool.query('GRANT UPDATE(state,attempts,next_check_at,lease_token,lease_until) ON checkout_notifications TO ligado_pay_runtime');
+  await pool.query('GRANT SELECT, INSERT ON payment_operations TO ligado_pay_runtime');
   const test = await pool.query("SELECT 1 FROM pg_database WHERE datname='ligado_pay_test'");
   if (!test.rowCount) await pool.query('CREATE DATABASE ligado_pay_test');
   console.log('Local migrations, restricted runtime role and isolated test database ready.');

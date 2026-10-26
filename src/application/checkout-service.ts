@@ -27,6 +27,14 @@ export class CheckoutService {
     return { payment: await this.repository.finishCheckout(reserved.payment.id, link), created: true };
   }
 
+  async lookup(principal: Principal, receiverId: string, externalReference: string) {
+    if (!principal.permissions.includes('payments:read') || !principal.receiverIds.includes(receiverId) ||
+        receiverId !== this.receiverId) throw new PaymentError(403, 'OPERATION_NOT_ALLOWED');
+    const payment = await this.repository.findByReference(principal, receiverId, externalReference);
+    if (!payment) throw new PaymentError(404, 'PAYMENT_NOT_FOUND');
+    return payment;
+  }
+
   async get(principal: Principal, id: string) {
     if (!principal.permissions.includes('payments:read')) throw new PaymentError(403, 'OPERATION_NOT_ALLOWED');
     const payment = await this.repository.find(principal, id);

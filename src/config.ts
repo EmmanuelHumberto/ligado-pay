@@ -8,7 +8,8 @@ export interface Config {
   port: number;
   credentials: Credential[];
   provider: 'simulated' | 'infinitepay';
-  infinitepay?: { receiverId: string; handle: string; redirectUrl: string; apiKeyFile: string; liveCreationEnabled: boolean };
+  infinitepay?: { receiverId: string; handle: string; redirectUrl: string; apiKeyFile: string; liveCreationEnabled: boolean;
+    webhookUrl?:string; webhookApplicationId?:string };
 }
 const identifier = /^[a-z][a-z0-9_-]{2,63}$/;
 const integer = (value: unknown, min: number, max: number): value is number =>
@@ -38,13 +39,15 @@ export function parseConfig(value: unknown, nodeEnv: string | undefined): Config
         !Array.isArray(c['receiverIds']) || !c['receiverIds'].length || c['receiverIds'].length > 10 ||
         !c['receiverIds'].every((v: unknown) => typeof v === 'string' && identifier.test(v)) ||
         !Array.isArray(c['permissions']) || !c['permissions'].length ||
-        !c['permissions'].every((v: unknown) => v === 'payments:create' || v === 'payments:read' || v === 'payments:check') ||
+        !c['permissions'].every((v: unknown) => v === 'payments:create' || v === 'payments:read' || v === 'payments:check' || v === 'payments:operations') ||
         !integer(c['maxAmountCents'], 1, 100_000_000) || !integer(c['requestsPerMinute'], 1, 600) ||
         hashes.has(c['keyHash']) || applications.has(c['applicationId'])) return fail();
     hashes.add(c['keyHash']); applications.add(c['applicationId']);
+    if (c['maxPayments'] !== undefined && !integer(c['maxPayments'], 1, 100000)) return fail();
     credentials.push({ applicationId: c['applicationId'], keyHash: c['keyHash'],
       receiverIds: [...c['receiverIds']] as string[], permissions: [...c['permissions']] as Credential['permissions'],
-      maxAmountCents: c['maxAmountCents'], requestsPerMinute: c['requestsPerMinute'] });
+      maxAmountCents: c['maxAmountCents'], requestsPerMinute: c['requestsPerMinute'],
+      ...(c['maxPayments'] === undefined ? {} : {maxPayments: c['maxPayments'] as number}) });
   }
   const result: Config = { databaseUrl: raw['databaseUrl'], port: raw['port'], credentials,
     provider: infinite ? 'infinitepay' : 'simulated' };
@@ -57,6 +60,16 @@ export function parseConfig(value: unknown, nodeEnv: string | undefined): Config
         !credentials.every(credential => credential.receiverIds.every(id => id === c['receiverId']))) return fail();
     result.infinitepay = { receiverId: c['receiverId'], handle: c['handle'], redirectUrl: c['redirectUrl'],
       apiKeyFile: c['apiKeyFile'], liveCreationEnabled: c['liveCreationEnabled'] };
+    if(c['webhookUrl']!==undefined||c['webhookApplicationId']!==undefined){
+      if(typeof c['webhookUrl']!=='string'||typeof c['webhookApplicationId']!=='string')return fail();
+      let hook:URL,redirect:URL;
+      try{hook=new URL(c['webhookUrl']);redirect=new URL(c['redirectUrl']);}catch{return fail();}
+      const principal=credentials.find(p=>p.applicationId===c['webhookApplicationId']);
+      if(hook.protocol!=='https:'||hook.origin!==redirect.origin||hook.pathname!=='/ligado-pay/webhooks/infinitepay'||
+        hook.search||hook.hash||hook.username||hook.password||!principal||
+        !principal.permissions.includes('payments:read')||!principal.permissions.includes('payments:check'))return fail();
+      result.infinitepay.webhookUrl=hook.href;result.infinitepay.webhookApplicationId=principal.applicationId;
+    }
   }
   return result;
 }

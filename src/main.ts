@@ -8,6 +8,8 @@ import { InfinitePayTransport } from './infrastructure/infinitepay/transport.js'
 import { InfinitePayCheckout } from './infrastructure/infinitepay/checkout.js';
 import { CheckoutService } from './application/checkout-service.js';
 import { PostgresCheckoutRepository } from './infrastructure/postgres-checkout-repository.js';
+import {InfinitePayNotifications} from './infrastructure/infinitepay/notifications.js';
+import {PaymentOperations} from './application/payment-operations.js';
 
 let pool: pg.Pool | undefined;
 try {
@@ -29,10 +31,18 @@ try {
     new InfinitePayTransport(apiKey, fetch));
     checkout = new CheckoutService(repository, connector, settings.receiverId, settings.liveCreationEnabled);
   }
-  const api = createServer(repository, new SimulatedProvider(), config.credentials, checkout);
+  let notifications:InfinitePayNotifications|undefined;
+  if(checkout&&settings?.webhookApplicationId){
+    await pool.query('SELECT id FROM checkout_notifications LIMIT 0');
+    notifications=new InfinitePayNotifications(pool,checkout,config.credentials.find(p=>p.applicationId===settings.webhookApplicationId)!);
+  }
+  const operations=checkout?new PaymentOperations(pool,checkout):undefined;
+  if(operations)await pool.query('SELECT id FROM payment_operations LIMIT 0');
+  const api = createServer(repository, new SimulatedProvider(), config.credentials, checkout,notifications,operations);
   await api.listen({ port: config.port, host: '127.0.0.1' });
+  notifications?.start();
   console.log(`Ligado Pay listening on 127.0.0.1:${config.port}. Provider: ${config.provider}. Live creation: ${checkout?.creationEnabled ?? false}.`);
-  const stop = async () => { await api.close(); await pool?.end(); };
+  const stop = async () => { await api.close(); await notifications?.stop(); await pool?.end(); };
   process.once('SIGINT', () => { void stop(); });
   process.once('SIGTERM', () => { void stop(); });
 } catch {

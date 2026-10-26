@@ -16,6 +16,8 @@ Se a colagem na entrada oculta falhar, copie somente o valor da chave e execute 
 
 ## Implementado
 
+Recuperação local do consumidor: `GET /v1/payment-references/:receiverId/:externalReference` exige leitura autorizada e retorna somente registro existente no gateway, mesmo com criação desligada. Não chama `/links` ou `/payment_check`. Serve para recuperar o ID/link que o consumidor perdeu; `PROCESSING`, `UNCERTAIN` ou referência ausente não autorizam criar novamente. Incerteza no próprio provedor ainda exige conciliação. Os endpoints preparados de retorno do SystemOS usam sessão/DTO e reconsulta; UI e URL de retorno no provedor não foram alteradas.
+
 Alternativa de entrada por arquivo: `& .\scripts\guardar-chave-infinitepay.ps1 -DoArquivo "$env:LOCALAPPDATA\LigadoTattoo\LigadoPay\infinitepay-entrada.txt"`. O arquivo temporário contém apenas a chave, sem aspas ou nome de variável, e deve ficar fora do repositório com ACL restrita. O comando valida e cifra sem imprimir seu conteúdo; não remove a origem. Após confirmar a gravação DPAPI, remova o arquivo temporário. Não cole texto diretamente no arquivo `.dpapi`.
 
 - Porta `CheckoutConnector` independente de OS, pedidos comerciais e dados de cartão.
@@ -46,7 +48,9 @@ O exemplo público de `payment_check` contém `amount` e `paid_amount` diferente
 
 ## Validações restantes e operação real
 
-### Primeiro teste real preparado, ainda não executado
+### Primeiro teste real concluído — não repetir
+
+O procedimento abaixo registra como o teste foi preparado. Ele já foi executado, pago e confirmado, conforme a conclusão ao final desta seção e `docs/retomada.md`. Não executar novamente nem apagar o marcador para retomar o projeto.
 
 `node scripts/infinitepay-live-validation.mjs` mostra somente o plano, sem ler a chave, abrir o banco ou chamar o provedor. O plano fixa um link de R$ 1,00 para `emmanuel-humberto`, retorno ao portal, solicitação de validade de uma hora e uso único, sem webhook, notificação a clientes ou pagamento automático. Pix e cartão continuam disponíveis. Validade e uso único são opções solicitadas ao provedor, ainda não comprovadas em operação real.
 
@@ -77,3 +81,8 @@ Depois que o usuário concluiu o checkout, a página exibiu sucesso e o retorno 
 - [Documentação de checkout](https://www.infinitepay.io/checkout-documentacao)
 - [Checkout e Pix grátis](https://www.infinitepay.io/checkout)
 - [Integrações oficiais e contato técnico](https://www.infinitepay.io/desenvolvedores)
+
+
+## Operação privada atual
+
+A orientação vigente de recuperação, alertas e devoluções está em [Operação privada do Pix](operacao-pix.md). Devoluções/cancelamentos financeiros são feitos exclusivamente na conta InfinitePay. Solicitações e avisos internos permanecem pendentes e não comprovam nem lançam uma devolução. As seções de preparação acima são históricas; a integração privada por webhook e os testes Pix reais posteriores estão registrados em docs/retomada.md.

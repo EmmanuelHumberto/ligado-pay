@@ -62,6 +62,19 @@ export class PostgresRepository implements PaymentRepository {
         AND receiver_id=$2 AND environment=$4 AND external_reference=$3`,
       [principal.applicationId, input.receiverId, input.externalReference, this.profile.environment]);
       if (reference.rowCount) throw new PaymentError(409, 'REFERENCE_ALREADY_CHARGED');
+      // The same lock protects the lifetime cap and idempotent replay across processes.
+      // Count all states/providers: expiry, uncertainty or a restart never replenishes it.
+      if (principal.maxPayments !== undefined) {
+        if (!Number.isSafeInteger(principal.maxPayments) || principal.maxPayments < 1 || principal.maxPayments > 100000) {
+          throw new PaymentError(403, 'INVALID_RESERVATION_LIMIT');
+        }
+        const reserved = await client.query<{count: string}>(`SELECT count(*)::text AS count FROM payments
+          WHERE application_id=$1 AND receiver_id=$2 AND environment=$3`,
+        [principal.applicationId, input.receiverId, this.profile.environment]);
+        if (Number(reserved.rows[0]!.count) >= principal.maxPayments) {
+          throw new PaymentError(409, 'RESERVATION_LIMIT_REACHED');
+        }
+      }
       const inserted = await client.query<PaymentRow>(`INSERT INTO payments
         (id,application_id,receiver_id,environment,external_reference,amount_cents,currency,method,
          provider,idempotency_key,request_hash,state,provider_account,checkout_expires_at)
@@ -80,6 +93,15 @@ export class PostgresRepository implements PaymentRepository {
       AND receiver_id=ANY($3::text[]) AND environment=$4 AND provider=$5
       AND provider_account IS NOT DISTINCT FROM $6`,
     [id, principal.applicationId, principal.receiverIds, this.profile.environment, this.profile.provider, this.profile.account]);
+    return result.rows[0] ? toPayment(result.rows[0]) : null;
+  }
+
+  async findByReference(principal: Principal, receiverId: string, externalReference: string) {
+    const result = await this.pool.query<PaymentRow>(`SELECT * FROM payments WHERE application_id=$1
+      AND receiver_id=$2 AND receiver_id=ANY($3::text[]) AND external_reference=$4
+      AND environment=$5 AND provider=$6 AND provider_account IS NOT DISTINCT FROM $7`,
+    [principal.applicationId, receiverId, principal.receiverIds, externalReference,
+      this.profile.environment, this.profile.provider, this.profile.account]);
     return result.rows[0] ? toPayment(result.rows[0]) : null;
   }
 

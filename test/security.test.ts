@@ -15,6 +15,16 @@ const configuration = () => ({ mode: 'local', provider: 'simulated', environment
     keyHash: createHash('sha256').update(token).digest('hex'), permissions: ['payments:create','payments:read'],
     maxAmountCents: 1000, requestsPerMinute: 20 }] });
 
+test('optional lifetime cap is validated and retained in the authenticated principal', () => {
+  const raw = configuration();
+  const withCap = (maxPayments: unknown) => ({...raw, credentials: [{...raw.credentials[0], maxPayments}]});
+  const credentials = parseConfig(withCap(1), 'test').credentials;
+  assert.equal(authenticate(`Bearer ${token}`, credentials)?.maxPayments, 1);
+  assert.equal(Object.hasOwn(authenticate(`Bearer ${token}`, credentials)!, 'keyHash'), false);
+  for (const value of [0,-1,1.2,'1',null,100001]) assert.throws(() => parseConfig(withCap(value), 'test'));
+  assert.equal(parseConfig(raw, 'test').credentials[0]?.maxPayments, undefined);
+});
+
 test('configuration refuses production service, incomplete real provider, remote database and missing limits', () => {
   assert.throws(() => parseConfig(configuration(), 'production'));
   for (const replacement of [{ provider: 'mercadopago' }, { provider: 'infinitepay' }, { mode: 'production' }, { environment: 'production' },
@@ -61,7 +71,7 @@ test('HTTP boundary rejects browsers, missing auth, arbitrary fields, invalid va
   let reservationCalls = 0;
   const repository: PaymentRepository = {
     async reserve() { reservationCalls++; throw new Error('must not persist invalid requests'); },
-    async find() { return null; }, async finish() { throw new Error('unused'); },
+    async find() { return null; }, async findByReference() { return null; }, async finish() { throw new Error('unused'); },
     async consumeRequest() { return true; }, async ready() {},
   };
   const api = createServer(repository, new SimulatedProvider(), parseConfig(configuration(), 'test').credentials);
@@ -94,7 +104,7 @@ test('HTTP boundary rejects browsers, missing auth, arbitrary fields, invalid va
 test('HTTP errors do not leak database failure, credentials or unknown URL', async t => {
   const secret = 'sensitive-database-message';
   const repository: PaymentRepository = {
-    async reserve() { throw new Error(secret); }, async find() { throw new Error(secret); },
+    async reserve() { throw new Error(secret); }, async find() { throw new Error(secret); }, async findByReference() { throw new Error(secret); },
     async finish() { throw new Error(secret); }, async consumeRequest() { return true; }, async ready() { throw new Error(secret); },
   };
   const api = createServer(repository, new SimulatedProvider(), parseConfig(configuration(), 'test').credentials);

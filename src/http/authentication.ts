@@ -12,7 +12,8 @@ export function authenticate(header: string | undefined, credentials: readonly C
   if (!found) return null;
   // Never attach the credential hash to the request or response.
   return { applicationId: found.applicationId, receiverIds: found.receiverIds, permissions: found.permissions,
-    maxAmountCents: found.maxAmountCents, requestsPerMinute: found.requestsPerMinute };
+    maxAmountCents: found.maxAmountCents, requestsPerMinute: found.requestsPerMinute,
+    ...(found.maxPayments === undefined ? {} : {maxPayments: found.maxPayments}) };
 }
 
 export class IngressLimiter {

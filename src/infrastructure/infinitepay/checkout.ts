@@ -15,6 +15,7 @@ export interface InfinitePayAccount {
   handle: string;
   maxAmountCents: number;
   redirectUrl: string;
+  webhookUrl?: string;
 }
 
 export class InfinitePayCheckout implements CheckoutConnector {
@@ -30,6 +31,12 @@ export class InfinitePayCheckout implements CheckoutConnector {
       throw new Error('Invalid InfinitePay account configuration.');
     }
     this.account = Object.freeze({ ...account }); this.now = now;
+    if(account.webhookUrl){
+      const hook=new URL(account.webhookUrl);
+      if(hook.origin!==redirect.origin||hook.pathname!=='/ligado-pay/webhooks/infinitepay'||hook.search||hook.hash||hook.username||hook.password) {
+        throw new Error('Invalid notification URL.');
+      }
+    }
   }
 
   private validate(intent: CheckoutIntent) {
@@ -47,6 +54,7 @@ export class InfinitePayCheckout implements CheckoutConnector {
     const response = await this.transport.post('create-link', {
       order_nsu: intent.paymentId,
       redirect_url: this.account.redirectUrl,
+      ...(this.account.webhookUrl?{webhook:{url:this.account.webhookUrl,events:['paid','settled','refunded','canceled']}}:{}),
       items: [{ quantity: 1, price: intent.amountCents, description: 'Pagamento Ligado' }],
       options: { single_payment: true, valid_until: new Date(expires).toISOString(),
         // The provider explicitly keeps credit_card available. Do not promise a Pix-only link.

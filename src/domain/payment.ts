@@ -28,9 +28,11 @@ export interface CreatePayment {
 export interface Principal {
   applicationId: string;
   receiverIds: readonly string[];
-  permissions: readonly ('payments:create' | 'payments:read' | 'payments:check')[];
+  permissions: readonly ('payments:create' | 'payments:read' | 'payments:check' | 'payments:operations')[];
   maxAmountCents: number;
   requestsPerMinute: number;
+  /** Optional lifetime reservation cap per application/receiver/environment, including uncertain outcomes. */
+  maxPayments?: number;
 }
 export class PaymentError extends Error {
   constructor(public readonly status: number, public readonly code: string) {

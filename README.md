@@ -1,5 +1,7 @@
 # Ligado Pay
 
+Operação privada de Pix: [recuperação, alertas e limite de devoluções](docs/operacao-pix.md). Devolução/cancelamento de dinheiro ficam exclusivamente na conta InfinitePay; registros internos não executam essas operações.
+
 API de gateway de pagamentos da Ligado, reutilizável pelo SystemOS, pelo aplicativo por meio de seu backend, pela futura loja virtual e por outras aplicações autorizadas.
 
 ## Escopo
@@ -49,6 +51,8 @@ Requisitos e sequência de entrega: [arquitetura e segurança](docs/arquitetura-
 Para continuar o trabalho, leia primeiro as [anotações de retomada](docs/retomada.md), incluindo o Pix real já confirmado e as restrições para não repetir a operação.
 
 Base local executável em TypeScript/Fastify com PostgreSQL próprio, autenticação de serviço, autorização por aplicação/recebedor, intenção durável, idempotência e eventos/outbox transacionais. O padrão é simulado. Há composição local selecionável para InfinitePay, com segredo protegido, link persistido e confirmação por consulta; criação real fica desligada por padrão. A conta é identificada como produção, sem inventar sandbox. Implantação em produção ainda bloqueada. Nenhum pagamento foi migrado e nenhum serviço foi publicado. SystemOS, portal e app permanecem independentes desta preparação.
+
+O consumidor SystemOS tem vínculo financeiro, retorno protegido e recuperação por referência, com reserva durável e proteção contra tentativas simultâneas. Há identidade privada de leitura com DPAPI e conexão preparada no portal/app. Os dois backends foram testados juntos por HTTP com bancos separados e provedor sintético. O Moto G24 passou em 14 cenários offline, e o APK principal foi atualizado com hash conferido, sem desinstalar ou limpar dados. Criação real continua bloqueada, sem publicação web/API ou migração operacional. O retorno do app usa o portal autenticado no navegador. Permissões operacionais, implantação, homologação financeira, conciliação e devolução permanecem pendentes; ver [retomada](docs/retomada.md).
 
 - [Arquitetura executável e controles presentes](docs/arquitetura.md)
 - [Modelo de ameaças e pendências](docs/modelo-ameacas.md)

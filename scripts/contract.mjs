@@ -1,5 +1,5 @@
 import { readFile, writeFile } from 'node:fs/promises';
-import { paymentBody, idempotencyKey, checkoutHintsBody } from '../dist/src/http/schemas.js';
+import { paymentBody, idempotencyKey, checkoutHintsBody, referenceParams,operationBody } from '../dist/src/http/schemas.js';
 const payment = { type: 'object', required: ['id','applicationId','receiverId','environment','externalReference',
   'amountCents','currency','state','providerReference','createdAt','provider','simulated','realPaymentsEnabled','checkout'],
   properties: {
@@ -26,12 +26,31 @@ const document = { openapi: '3.1.0', info: { title: 'Ligado Pay local API', vers
   security: [{ serviceToken: [] }], components: { schemas: { Payment: payment }, responses: { Error: errorResponse }, securitySchemes: {
     serviceToken: { type: 'http', scheme: 'bearer', description: 'Local 256-bit service token. Never embed in browser/app.' },
   } }, paths: {
+    '/v1/operations':{get:{description:'Read-only, application/receiver/account scoped operational alerts. Never moves money or automatically expires a financial intent.',responses:{200:{description:'Bounded operational alert report and unsupported provider capabilities'},...errors}}},
+    '/v1/payments/{id}/operations':{
+      get:{parameters:[{in:'path',name:'id',required:true,schema:{type:'string',format:'uuid'}}],responses:{200:{description:'Scoped audit records and operational alerts'},...errors}},
+      post:{description:'Requires payments:operations and payments:read. Audited request or evidence only. Refund/cancellation must be performed in InfinitePay; no financial state is changed.',
+        parameters:[{in:'path',name:'id',required:true,schema:{type:'string',format:'uuid'}},{in:'header',name:'Idempotency-Key',required:true,schema:idempotencyKey}],
+        requestBody:{required:true,content:{'application/json':{schema:operationBody}}},responses:{200:{description:'Idempotent request recorded; NEEDS_PROVIDER_ACTION, not a completed refund/cancellation'},...errors}}},
+    '/v1/payments/{id}/reconciliation':{post:{description:'Requires payments:operations/read. Audited requeue of an existing payment with provider correlation hints. No new charge, no automatic approval.',
+      parameters:[{in:'path',name:'id',required:true,schema:{type:'string',format:'uuid'}},{in:'header',name:'Idempotency-Key',required:true,schema:idempotencyKey}],
+      requestBody:{required:true,content:{'application/json':{schema:checkoutHintsBody}}},responses:{200:{description:'Queued or idempotent replay; asynchronous provider verification required'},...errors}}},
+    '/webhooks/infinitepay': {post:{operationId:'receiveInfinitePayHint',security:[],
+      description:'Enabled only with an explicitly scoped notification identity. Public untrusted hint, not proof of payment. Persists only order/transaction/invoice correlation; asynchronous authenticated provider verification determines financial state. Never creates or refunds.',
+      requestBody:{required:true,content:{'application/json':{schema:{type:'object',required:['order_nsu','transaction_nsu','invoice_slug'],
+        properties:{order_nsu:{type:'string',format:'uuid'},transaction_nsu:{type:'string',format:'uuid'},invoice_slug:{type:'string',pattern:'^[A-Za-z0-9_-]{1,128}$'}}}}}},
+      responses:{200:{description:'Known hint durably queued, duplicate or inaccessible reference ignored; not confirmation of payment'},...errors}}},
     '/health/live': { get: { security: [], responses: { 200: { description: 'Process alive, no database access' } } } },
     '/health/ready': { get: { responses: { 200: { description: 'Database tables ready; configured provider and creation switch' }, ...errors } } },
     '/v1/payments': { post: { operationId: 'createPayment',
       parameters: [{ in: 'header', name: 'Idempotency-Key', required: true, schema: idempotencyKey }],
       requestBody: { required: true, content: { 'application/json': { schema: paymentBody } } },
       responses: { 201: response('New payment intent; not confirmation of receipt'), 200: response('Idempotent replay'), ...errors } } },
+    '/v1/payment-references/{receiverId}/{externalReference}': { get: { operationId: 'lookupPayment',
+      description: 'Read-only recovery by opaque external reference. Requires payments:read. Never reserves or sends a creation, including when live creation is disabled. A missing reference does not authorize retrying creation.',
+      parameters: Object.entries(referenceParams.properties).map(([name, schema]) => ({ in: 'path', name, required: true, schema })),
+      responses: { 200: response('Stored payment scoped to application, receiver, environment and provider account'),
+        404: { description: 'Unknown or inaccessible reference; no creation attempted' }, ...errors } } },
     '/v1/payments/{id}': { get: { operationId: 'getPayment',
       parameters: [{ in: 'path', name: 'id', required: true, schema: { type: 'string', format: 'uuid' } }],
       responses: { 200: response('Payment visible to the authenticated application and receiver'),
