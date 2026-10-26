@@ -40,7 +40,7 @@ Primeiro atualize o banco local com `npm run local:bootstrap`. Para guardar a ch
 & .\scripts\guardar-chave-infinitepay.ps1
 ```
 
-A entrada é oculta. O comando não inicia a API nem se conecta à InfinitePay. O arquivo cifrado fica em `%LOCALAPPDATA%\LigadoTattoo\LigadoPay\infinitepay.dpapi`, restrito ao usuário e SYSTEM. Não executamos esse comando com a chave real nesta entrega.
+A entrada é oculta. O comando não inicia a API nem se conecta à InfinitePay. O arquivo cifrado fica em `%LOCALAPPDATA%\LigadoTattoo\LigadoPay\infinitepay.dpapi`, restrito ao usuário e SYSTEM. Em 26/10/2026, a chave fornecida localmente pelo usuário foi cifrada por esse helper, o arquivo de entrada foi removido e a leitura protegida pelo runtime foi confirmada sem exibir o valor. A autenticação junto ao provedor ainda não foi testada.
 
 Para preparar a configuração, após informar a InfiniteTag correta e uma rota HTTPS de retorno sob controle da Ligado:
 

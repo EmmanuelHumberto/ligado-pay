@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-26",
+  "provider": "infinitepay",
+  "account": "emmanuel-humberto",
+  "paymentId": "65511ae7-3957-4afd-8663-0d13a934d8db",
+  "amountCents": 100,
+  "currency": "BRL",
+  "creationRequests": 1,
+  "creationHttpStatus": 200,
+  "confirmationRequests": 1,
+  "confirmationEndpoint": "https://api.checkout.infinitepay.io/payment_check",
+  "confirmedState": "PAID_PIX",
+  "confirmationViaBrowserOnly": false,
+  "automaticPaymentByAgent": false,
+  "generalLiveCreationEnabled": false,
+  "webhookRegistered": false,
+  "systemosIntegrationComplete": false,
+  "finalSettlementVerified": false,
+  "containsCredentialOrPayerData": false
+}
