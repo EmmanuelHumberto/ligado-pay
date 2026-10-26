@@ -46,6 +46,8 @@ Requisitos e sequência de entrega: [arquitetura e segurança](docs/arquitetura-
 
 ## Estado de implementação
 
+Para continuar o trabalho, leia primeiro as [anotações de retomada](docs/retomada.md), incluindo o Pix real já confirmado e as restrições para não repetir a operação.
+
 Base local executável em TypeScript/Fastify com PostgreSQL próprio, autenticação de serviço, autorização por aplicação/recebedor, intenção durável, idempotência e eventos/outbox transacionais. O padrão é simulado. Há composição local selecionável para InfinitePay, com segredo protegido, link persistido e confirmação por consulta; criação real fica desligada por padrão. A conta é identificada como produção, sem inventar sandbox. Implantação em produção ainda bloqueada. Nenhum pagamento foi migrado e nenhum serviço foi publicado. SystemOS, portal e app permanecem independentes desta preparação.
 
 - [Arquitetura executável e controles presentes](docs/arquitetura.md)

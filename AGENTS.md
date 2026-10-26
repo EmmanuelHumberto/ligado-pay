@@ -2,6 +2,8 @@
 
 O usuário determinou que o Ligado Pay seja unicamente uma API de gateway de pagamentos. Preserve esse limite em código, contratos, dependências e documentação.
 
+- Ao retomar, leia `docs/retomada.md`: o teste real de R$ 1,00 já foi pago e confirmado; não repetir a operação nem remover o marcador de tentativa para recriá-la.
+
 - Leia o README.md antes de implementar. Inclua somente responsabilidades inerentes ao processamento e à integração de pagamentos.
 - Não introduza regras de OS, orçamento, manutenção, estoque, frete, catálogo, CRM ou pedidos comerciais. Referencie a operação de origem por identificador externo opaco.
 - Não compartilhe tabelas nem consulte diretamente os bancos das aplicações consumidoras.
