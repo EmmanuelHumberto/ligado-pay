@@ -1,0 +1,30 @@
+{
+  "name": "@ligado/pay",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.19.0 <25"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test dist/test/*.test.js",
+    "test:integration": "npm run build && node --test dist/test/*.integration.js",
+    "contract:generate": "npm run build && node scripts/contract.mjs",
+    "contract:check": "npm run build && node scripts/contract.mjs --check",
+    "start": "node dist/src/main.js",
+    "migrate": "node dist/src/infrastructure/migrate.js",
+    "local:setup": "node scripts/setup-local.mjs",
+    "local:bootstrap": "npm run build && node scripts/bootstrap-local.mjs",
+    "local:verify": "npm run build && node scripts/verify-local-runtime.mjs"
+  },
+  "dependencies": {
+    "fastify": "5.12.7",
+    "pg": "8.23.1"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.5",
+    "@types/pg": "8.23.1",
+    "typescript": "7.0.2"
+  }
+}
