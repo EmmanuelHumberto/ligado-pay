@@ -9,7 +9,7 @@ import { loadProviderSecret } from '../src/infrastructure/provider-secret.js';
 
 test('local provider secret roundtrip uses protected storage and errors reveal no credential', () => {
   const directory = mkdtempSync(join(tmpdir(), 'ligado-pay-secret-'));
-  const secret = `inchk_${randomBytes(32).toString('hex')}`;
+  const secret = `token.${randomBytes(32).toString('base64')}`;
   const path = join(directory, process.platform === 'win32' ? 'test.dpapi' : 'test.key');
   try {
     let stored = secret;
@@ -24,7 +24,7 @@ test('local provider secret roundtrip uses protected storage and errors reveal n
     }
     writeFileSync(path, stored, { mode: 0o600 });
     assert.equal(loadProviderSecret(path), secret);
-    writeFileSync(path, 'invalid');
+    writeFileSync(path, 'invalid\r\nheader');
     assert.throws(() => loadProviderSecret(path), error => {
       assert.equal((error as Error).message, 'Provider credential unavailable or not protected.');
       assert.equal(String(error).includes(secret), false); return true;

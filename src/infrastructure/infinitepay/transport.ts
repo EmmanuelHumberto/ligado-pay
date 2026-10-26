@@ -1,6 +1,7 @@
 import { CheckoutError } from '../../application/checkout-connector.js';
+import { normalizeInfinitePayCredential } from './credential.js';
 
-/** Injected only by an explicit composition root. The running API does not wire this transport. */
+/** Injected only by an explicit composition root; live creation remains an explicit configuration. */
 export type ProviderFetch = (url: string, init: RequestInit) => Promise<Response>;
 export type InfinitePayOperation = 'create-link' | 'check-payment';
 const paths = { 'create-link': '/links', 'check-payment': '/payment_check' } as const;
@@ -34,8 +35,7 @@ export class InfinitePayTransport {
 
   constructor(apiKey: string, fetchImplementation: ProviderFetch) {
     // A key is mandatory even though a legacy, unauthenticated link flow exists.
-    if (!/^inchk_[A-Za-z0-9_-]{16,240}$/.test(apiKey)) throw new Error('Invalid InfinitePay credential.');
-    this.#key = apiKey; this.#fetch = fetchImplementation;
+    this.#key = normalizeInfinitePayCredential(apiKey); this.#fetch = fetchImplementation;
   }
 
   async post(operation: InfinitePayOperation, body: object): Promise<unknown> {

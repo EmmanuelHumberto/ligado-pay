@@ -3,6 +3,7 @@
     "target": "ES2023", "module": "NodeNext", "moduleResolution": "NodeNext",
     "strict": true, "noUncheckedIndexedAccess": true, "exactOptionalPropertyTypes": true,
     "verbatimModuleSyntax": true, "outDir": "dist", "rootDir": ".",
+    "resolveJsonModule": true,
     "noUnusedLocals": true, "noUnusedParameters": true, "skipLibCheck": true
   },
   "include": ["src/**/*.ts", "test/**/*.ts"]

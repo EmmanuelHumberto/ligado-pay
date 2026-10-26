@@ -36,7 +36,7 @@ O exemplo público de `payment_check` contém `amount` e `paid_amount` diferente
 ## Hipóteses de contrato ainda não homologadas
 
 - Formato exato da resposta de criação: os normalizadores aceitam candidatos `url`, `checkout_url` ou `link`, recusando campos conflitantes. Esses nomes e o host/caminho do checkout precisam ser confirmados em contrato oficial ou teste autorizado; os fixtures não comprovam a resposta real.
-- Formato aceito da API Key, InfiniteTag, slug e UUID de transação. Validações conservadoras podem recusar formatos legítimos até a homologação; não afrouxar sem evidência.
+- A API Key é tratada como credencial opaca: não exigir prefixo de exemplo. A política compartilhada aceita ASCII visível até 2048 caracteres, remove espaços externos de cópia e rejeita vazio, espaços internos e caracteres de controle. Isso valida segurança do header, não autenticidade da chave. InfiniteTag, slug e UUID ainda exigem confirmação de formato na integração real.
 - Vínculo efetivo entre API Key, recebedor, `order_nsu`, slug e transação na consulta. Resposta incompatível com o identificador esperado precisa falhar, inclusive com mesmo valor e transações de outra cobrança.
 - `single_payment`, `valid_until` e métodos precisam ser verificados na conta da Ligado. Uma opção aceita em JSON não prova que o provedor a aplicou.
 

@@ -1,6 +1,7 @@
 import { readFileSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
+import { normalizeInfinitePayCredential } from './infinitepay/credential.js';
 
 /** Reads only the configured local secret, without logging contents or passing them as arguments. */
 export function loadProviderSecret(path: string): string {
@@ -23,7 +24,6 @@ export function loadProviderSecret(path: string): string {
       if ((statSync(path).mode & 0o077) !== 0) throw new Error();
       value = readFileSync(path, 'utf8').trim();
     }
-    if (!/^inchk_[A-Za-z0-9_-]{16,240}$/.test(value)) throw new Error();
-    return value;
+    return normalizeInfinitePayCredential(value);
   } catch { throw new Error('Provider credential unavailable or not protected.'); }
 }

@@ -138,7 +138,7 @@ test('invalid or conflicting provider responses never confirm a payment', async 
 
 test('check failures are sanitized and only fixed official endpoints are requested', async () => {
   const p = intent(), hints = { orderNsu: p.paymentId, transactionNsu: randomUUID(), slug: 'fixture' };
-  assert.throws(() => new InfinitePayTransport('missing-key', async () => json({})));
+  assert.throws(() => new InfinitePayTransport('', async () => json({})));
   await assert.rejects(fixture(async (url, options) => {
     assert.equal(new URL(url).origin, 'https://api.checkout.infinitepay.io');
     assert.equal(options.redirect, 'error'); throw new Error(`private upstream ${fakeKey}`);

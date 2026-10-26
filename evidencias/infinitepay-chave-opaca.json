@@ -1,0 +1,15 @@
+{
+  "date": "2026-10-26",
+  "result": "PASSOU",
+  "reason": "O helper exigia incorretamente prefixo inchk_ e rejeitou a chave informada pelo usuário sem gravá-la.",
+  "sharedCredentialPolicy": "contracts/infinitepay-credential-policy.json",
+  "prefixRequired": false,
+  "headerInjectionAndEmptyValuesRejected": true,
+  "helperSourceCompatibleWithLegacyPowerShellEncoding": true,
+  "unitAndSecurityTests": 21,
+  "windowsHelperPolicyExercisedWithoutWritingASecret": true,
+  "prefixlessProtectedSecretRoundtrip": true,
+  "realCredentialRead": false,
+  "providerRequests": 0,
+  "liveCreationEnabled": false
+}
