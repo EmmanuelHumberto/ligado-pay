@@ -51,3 +51,4 @@ Base local executável em TypeScript/Fastify com PostgreSQL próprio, autentica�
 - [Arquitetura executável e controles presentes](docs/arquitetura.md)
 - [Modelo de ameaças e pendências](docs/modelo-ameacas.md)
 - [Execução e testes locais](docs/desenvolvimento-local.md)
+- [InfinitePay: adaptador em validação, limites e homologação pendente](docs/infinitepay.md)

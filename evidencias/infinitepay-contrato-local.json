@@ -1,0 +1,40 @@
+{
+  "date": "2026-10-25",
+  "result": "TESTES_LOCAIS_PASSARAM_HOMOLOGACAO_PENDENTE",
+  "scope": "Adaptador de checkout InfinitePay com transporte injetado e respostas sintéticas. Não comprova o comportamento da API real.",
+  "infinitepayTests": 9,
+  "existingSecurityTests": 5,
+  "postgresIntegrationTests": 10,
+  "failedTests": 0,
+  "skippedTests": 0,
+  "knownDependencyVulnerabilities": 0,
+  "existingOpenApiContractUnchanged": true,
+  "providerApiRequests": 0,
+  "realLinksCreated": 0,
+  "realPaymentsProcessed": 0,
+  "realCredentialsCollected": false,
+  "adapterWiredIntoRuntime": false,
+  "runtimeStillSimulatedOnly": true,
+  "productionChanged": false,
+  "systemOsChanged": false,
+  "checkedLocally": [
+    "Chave somente no header e origem API fixa; redirects recusados.",
+    "Recebedor e teto fixados em configuração; valores inteiros em centavos.",
+    "Referência opaca, uso único e validade no payload; sem dados pessoais.",
+    "Links com host, recebedor ou campos conflitantes recusados.",
+    "Falha de criação não provoca retry e permanece incerta.",
+    "Notificação/redirect não é confirmação; consulta ao provedor é necessária.",
+    "Pix com valor divergente ou pagamento em cartão exige revisão.",
+    "Erros e respostas não expõem chave ou corpo do provedor.",
+    "Respostas JSON limitadas a 32 KiB."
+  ],
+  "pending": [
+    "Usuário vai verificar habilitação do Checkout Integrado e API Key.",
+    "Contrato real de resposta e vínculo da consulta com cobrança/recebedor.",
+    "Ambiente ou procedimento oficial de homologação.",
+    "Autenticidade das notificações, idempotência e recuperação sem retorno do comprador.",
+    "Devolução e tratamento de estados finais.",
+    "Integração ao registro financeiro e à outbox, com exclusividade da transação.",
+    "Checkout não documenta exclusividade Pix ou QR direto."
+  ]
+}

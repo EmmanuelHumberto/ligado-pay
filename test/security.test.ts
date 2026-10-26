@@ -16,7 +16,7 @@ const configuration = () => ({ mode: 'local', provider: 'simulated', environment
 
 test('configuration refuses production, real provider, remote database and missing limits', () => {
   assert.throws(() => parseConfig(configuration(), 'production'));
-  for (const replacement of [{ provider: 'mercadopago' }, { mode: 'production' }, { environment: 'production' },
+  for (const replacement of [{ provider: 'mercadopago' }, { provider: 'infinitepay' }, { mode: 'production' }, { environment: 'production' },
     { databaseUrl: 'postgresql://u:p@example.com/ligado_pay_test' }, { databaseUrl: 'postgresql://u:p@127.0.0.1/systemos' },
     { credentials: [{ ...configuration().credentials[0], requestsPerMinute: undefined }] },
     { credentials: [...configuration().credentials, ...configuration().credentials] }]) {

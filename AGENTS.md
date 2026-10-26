@@ -12,3 +12,4 @@ O usuário determinou que o Ligado Pay seja unicamente uma API de gateway de pag
 - Não migre pagamentos existentes, altere webhooks de produção, publique serviços ou envie alterações ao remoto apenas por preparar o diretório local.
 - O primeiro uso é privado, na aprovação de serviços do SystemOS, portal e app. Não abrir cadastro público de recebedores. Ler docs/arquitetura-seguranca-inicial.md e docs/provedores.md antes de implementar.
 - Não implementar um falso conector Pix direto com o Banco Central. Cobranças usam API oficial de PSP contratado. Documentação pública não equivale a homologação ou elegibilidade contratual.
+- Prioridade atual: InfinitePay, autorizada após a pesquisa do Nu e das tarifas. Ler docs/infinitepay.md. O adaptador tem testes sintéticos, não está habilitado no runtime e não comprova integração real; não contornar as pendências de contrato, conta e recuperação para gerar cobranças.
