@@ -1,6 +1,16 @@
 # Conector InfinitePay em validação de contrato
 
-Prioridade autorizada pelo usuário: avaliar a InfinitePay para receber Pix sem a tarifa informada para Mercado Pago. O usuário ainda vai verificar se a conta permite habilitar Checkout Integrado e criar API Key. Não foi coletada nenhuma credencial.
+Prioridade autorizada pelo usuário: InfinitePay para receber Pix sem a tarifa informada para Mercado Pago. Em 26/10/2026, o usuário confirmou Checkout Integrado habilitado e chave criada; informou que não existe seleção de sandbox na conta. A chave não foi enviada ao chat nem coletada pelo agente. Não exigir que o usuário obtenha um sandbox inexistente ou resposta do suporte para continuar o desenvolvimento.
+
+## Integração local 0.2
+
+O adaptador agora está ligado ao registro financeiro e à API por configuração local explícita. O modo padrão continua simulado. A conta InfinitePay é identificada como `production`, mesmo em desenvolvimento local; nunca é rotulada falsamente como sandbox. `liveCreationEnabled=false` bloqueia a criação antes de gravar intenção ou chamar o provedor.
+
+`POST /v1/payments` reserva uma intenção no mesmo banco e ledger usados pelo gateway; o link fica persistido. `GET /v1/payments/:id` consulta o registro autorizado. `POST /v1/payments/:id/check` exige `payments:read` e a nova permissão `payments:check`, consulta o provedor e aplica a observação autenticada em transação.
+
+`PAID_PIX` só é persistido junto com um registro único da transação e um evento/outbox. A mesma transação não quita duas cobranças, inclusive entre aplicações distintas. `REVIEW_REQUIRED` preserva divergências, incluindo pagamento em cartão, sem afirmar quitação Pix ou autorizar recobrança; não pode ser convertido automaticamente em pago por outra observação. A resolução manual ainda não foi implementada. Consulta pendente não rebaixa um pagamento já confirmado. Não há observação automática de estornos nesta etapa: o estado indica a confirmação registrada, não liquidação final ou monitoramento completo do ciclo financeiro.
+
+No Windows, o comando `scripts/guardar-chave-infinitepay.ps1` recebe a chave com entrada oculta e grava DPAPI do usuário atual fora do repositório, com ACL restrita. A API carrega a chave apenas na memória. A proteção foi testada com chave sintética; a chave real não foi lida. DPAPI não protege contra processo malicioso executado com a mesma identidade. Preserve a cópia de recuperação no gerenciador de senhas.
 
 ## Implementado
 
@@ -13,7 +23,7 @@ Prioridade autorizada pelo usuário: avaliar a InfinitePay para receber Pix sem 
 - Observação `PAID_PIX` somente para resposta autenticada `success=true`, `paid=true`, método Pix, valores exatos em centavos e uma parcela. Divergência vira `REVIEW_REQUIRED`; não é tratada como pagamento negado nem como autorização para cobrar novamente.
 - Falha de criação resulta em `CREATE_RESULT_UNCERTAIN`. O adaptador não repete a chamada e não inventa que a referência externa seja uma chave de idempotência nativa do provedor.
 
-Os testes usam respostas sintéticas e transporte injetado. O módulo não está ligado a `src/main.ts`, não é aceito pela configuração runtime e não possui endpoint público. A API existente continua exclusivamente simulada. Nenhum link real foi criado, nenhum webhook cadastrado e nenhum pagamento confirmado no gateway por este adaptador.
+Os testes usam respostas sintéticas e transporte injetado, inclusive através da API e PostgreSQL reais. A composição `src/main.ts` também foi iniciada com chave sintética cifrada, usuário restrito e bloqueio de qualquer chamada externa: criação desabilitada e zero requests ao provedor confirmados. O runtime não foi configurado com conta/chave real. Nenhum link real foi criado, nenhum webhook cadastrado e nenhum pagamento real confirmado.
 
 ## Limitações confirmadas na documentação
 
@@ -30,15 +40,15 @@ O exemplo público de `payment_check` contém `amount` e `paid_amount` diferente
 - Vínculo efetivo entre API Key, recebedor, `order_nsu`, slug e transação na consulta. Resposta incompatível com o identificador esperado precisa falhar, inclusive com mesmo valor e transações de outra cobrança.
 - `single_payment`, `valid_until` e métodos precisam ser verificados na conta da Ligado. Uma opção aceita em JSON não prova que o provedor a aplicou.
 
-## Condições que impedem a habilitação
+## Validações restantes e operação real
 
-1. Confirmar a opção de Checkout Integrado e a contratação aplicável à conta. Credencial permanece em cofre/arquivo privado do servidor; nunca pelo chat nem no app do cliente.
-2. Obter ambiente oficial de homologação ou procedimento autorizado. Não foi confirmado sandbox público isolado para este produto; não confundir InfinitePay/CloudWalk com serviços de nome semelhante em outros domínios.
+1. Guardar a chave criada em armazenamento protegido no computador do servidor. Nunca pelo chat ou app do cliente. Preparar configuração inicialmente com criação real desabilitada.
+2. Não há seleção de sandbox na conta informada. Continuar testes locais e preparar teste controlado no ambiente real, descrevendo antecipadamente a operação e seus possíveis efeitos para autorização do usuário. Não confundir InfinitePay/CloudWalk com serviços de nome semelhante em outros domínios.
 3. Confirmar autenticação e assinatura das notificações, defesa contra replay e definição dos eventos. Nenhuma assinatura foi inventada e nenhum webhook foi aberto neste projeto.
 4. Documentar a recuperação após timeout de criação ou perda de resposta, sem recriar cobrança. `order_nsu` sozinho não foi comprovado como idempotência.
 5. Confirmar consulta por referência independente do retorno do comprador, recuperação de notificações perdidas e distinção entre pago, liquidado, cancelado e estornado.
 6. Confirmar devolução de Pix: API disponível ou processo operacional formal, autorização, consulta e tratamento de falhas. Não foi implementado endpoint de devolução por suposição.
-7. Integrar ao registro financeiro durável com identificador do provedor, exclusividade global da transação e eventos/outbox na mesma transação. `PAID_PIX` hoje é uma observação do adaptador, não uma alteração de estado financeiro persistido.
+7. Registro financeiro durável, exclusividade da transação e evento/outbox já integrados e testados localmente. Validar esse contrato com resposta real antes de liberação; a comprovação local não é homologação no provedor.
 8. Homologar limites, expiração, valores, conta recebedora, isolamento e falhas antes de mudar a configuração de produção ou integrar a tela de aprovação.
 
 ## Perguntas prontas para o suporte

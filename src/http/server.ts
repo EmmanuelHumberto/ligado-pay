@@ -5,17 +5,22 @@ import type { Credential } from '../config.js';
 import type { PaymentRepository, PaymentProvider } from '../application/ports.js';
 import { PaymentService } from '../application/payment-service.js';
 import { authenticate, IngressLimiter } from './authentication.js';
-import { idempotencyKey, paymentBody } from './schemas.js';
+import { idempotencyKey, paymentBody, checkoutHintsBody } from './schemas.js';
+import type { CheckoutService } from '../application/checkout-service.js';
+import type { CheckoutHints } from '../application/checkout-connector.js';
+import { CheckoutError } from '../application/checkout-connector.js';
 
 declare module 'fastify' { interface FastifyRequest { principal: Principal | null } }
 const uuid = { type: 'string', pattern: '^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$' };
 
-export function createServer(repository: PaymentRepository, provider: PaymentProvider, credentials: Credential[]) {
+export function createServer(repository: PaymentRepository, provider: PaymentProvider, credentials: Credential[], checkout?: CheckoutService) {
   const api = Fastify({ logger: false, trustProxy: false, bodyLimit: 4096,
     requestTimeout: 10_000, connectionTimeout: 10_000, keepAliveTimeout: 5000,
     maxRequestsPerSocket: 100, ajv: { customOptions: { removeAdditional: false, coerceTypes: false, useDefaults: false } } });
   const service = new PaymentService(repository, provider);
   const ingress = new IngressLimiter();
+  const metadata = { provider: checkout ? 'infinitepay' : provider.name, simulated: !checkout,
+    realPaymentsEnabled: checkout?.creationEnabled ?? false };
   api.decorateRequest('principal', null);
   api.addHook('onRequest', async (request, reply) => {
     reply.headers({ 'cache-control': 'no-store', 'x-content-type-options': 'nosniff',
@@ -30,6 +35,9 @@ export function createServer(repository: PaymentRepository, provider: PaymentPro
   });
   api.setErrorHandler((error, _request, reply) => {
     if (error instanceof PaymentError) return reply.code(error.status).send({ error: error.code });
+    if (error instanceof CheckoutError) return reply.code(
+      error.code === 'INVALID_CHECKOUT_HINTS' || error.code === 'INVALID_CHECKOUT_INTENT' ? 400 : 503,
+    ).send({ error: error.code });
     const e = error as { validation?: unknown; statusCode?: number };
     if (e.validation || e.statusCode === 400 || e.statusCode === 415 || e.statusCode === 413) {
       return reply.code(e.statusCode ?? 400).send({ error: 'INVALID_REQUEST' });
@@ -41,7 +49,7 @@ export function createServer(repository: PaymentRepository, provider: PaymentPro
   api.get('/health/live', async () => ({ status: 'alive' }));
   api.get('/health/ready', async () => {
     await repository.ready();
-    return { status: 'ready', environment: 'sandbox', provider: 'simulated', realPaymentsEnabled: false };
+    return { status: 'ready', environment: checkout ? 'production' : 'sandbox', ...metadata };
   });
   api.post<{ Body: CreatePayment; Headers: { 'idempotency-key': string } }>('/v1/payments', {
     schema: {
@@ -50,13 +58,15 @@ export function createServer(repository: PaymentRepository, provider: PaymentPro
       body: paymentBody,
     },
   }, async (request, reply) => {
-    const result = await service.create(request.principal!, request.body, request.headers['idempotency-key']);
-    return reply.code(result.created ? 201 : 200).send({ ...result.payment, provider: provider.name,
-      simulated: true, realPaymentsEnabled: false });
+    const result = await (checkout ?? service).create(request.principal!, request.body, request.headers['idempotency-key']);
+    return reply.code(result.created ? 201 : 200).send({ ...result.payment, ...metadata });
   });
   api.get<{ Params: { id: string } }>('/v1/payments/:id', {
     schema: { params: { type: 'object', additionalProperties: false, required: ['id'], properties: { id: uuid } } },
-  }, async request => ({ ...await service.get(request.principal!, request.params.id),
-    provider: provider.name, simulated: true, realPaymentsEnabled: false }));
+  }, async request => ({ ...await (checkout ?? service).get(request.principal!, request.params.id), ...metadata }));
+  if (checkout) api.post<{ Params: { id: string }; Body: CheckoutHints }>('/v1/payments/:id/check', {
+    schema: { params: { type: 'object', additionalProperties: false, required: ['id'], properties: { id: uuid } },
+      body: checkoutHintsBody },
+  }, async request => ({ ...await checkout.check(request.principal!, request.params.id, request.body), ...metadata }));
   return api;
 }

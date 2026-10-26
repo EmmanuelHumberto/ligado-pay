@@ -31,3 +31,30 @@ Exemplo de corpo sintético, sem credenciais:
 O token está no arquivo privado `.local/client.json`; o hash está na configuração runtime. Uma resposta simulada nunca deve liberar serviço ou representar dinheiro recebido. Não há QR de demonstração que possa ser confundido com cobrança real.
 
 `PROCESSING` significa reserva durável aguardando resultado. `PENDING` indica aceitação pelo simulador. `UNCERTAIN` indica falha sem prova de que a operação externa não ocorreu. Repetição com mesma chave/conteúdo devolve o mesmo identificador; alteração de conteúdo ou outra chave para a mesma referência retorna 409.
+
+## Preparação da InfinitePay no Windows
+
+Primeiro atualize o banco local com `npm run local:bootstrap`. Para guardar a chave real sem enviá-la ao chat, execute pessoalmente no PowerShell:
+
+```powershell
+& .\scripts\guardar-chave-infinitepay.ps1
+```
+
+A entrada é oculta. O comando não inicia a API nem se conecta à InfinitePay. O arquivo cifrado fica em `%LOCALAPPDATA%\LigadoTattoo\LigadoPay\infinitepay.dpapi`, restrito ao usuário e SYSTEM. Não executamos esse comando com a chave real nesta entrega.
+
+Para preparar a configuração, após informar a InfiniteTag correta e uma rota HTTPS de retorno sob controle da Ligado:
+
+```powershell
+npm run build
+node scripts/prepare-infinitepay.mjs --handle SUA_INFINITETAG --redirect https://SEU_DOMINIO/retorno-pagamento
+```
+
+Isso cria `.local/infinitepay.runtime.json` sem sobrescrever a configuração anterior e com `liveCreationEnabled=false`. Não informa a chave como argumento e não faz chamadas externas. A rota de retorno deve existir na aplicação integradora antes de qualquer uso real; ela não confirma pagamento por conta própria.
+
+Selecionar essa configuração via `LIGADO_PAY_CONFIG_FILE` monta o conector local. A API ainda fica em loopback. Produção de infraestrutura (`NODE_ENV=production`) permanece recusada. `environment=production` na configuração se refere à conta/endpoint financeiro real da InfinitePay, não a uma declaração de implantação pronta.
+
+`npm run infinitepay:verify` usa uma credencial sintética temporária e bloqueia toda saída de rede do processo da API. Comprova composição, segredo protegido e bloqueio de criação real; não usa sua chave e não cria cobrança. Os testes de integração cobrem criação/consulta/confirmação com transporte sintético e banco real.
+
+Para conferir um retorno autorizado, o backend integrador chama `POST /v1/payments/<uuid>/check` com token de serviço e corpo `{ "orderNsu": "<uuid-da-cobranca>", "transactionNsu": "<uuid-da-transacao>", "slug": "<codigo>" }`. Valores, recebedor, estado e credenciais não são aceitos nesse corpo. Um retorno do navegador nunca deve alterar a OS antes dessa consulta validada.
+
+Não alterar o switch de criação antes de apresentar o teste real concreto ao usuário. Estornos, dispatcher de eventos e a integração das telas do SystemOS/portal/app ainda estão pendentes.

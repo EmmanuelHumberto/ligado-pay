@@ -1,6 +1,6 @@
 {
   "name": "@ligado/pay",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -16,7 +16,8 @@
     "migrate": "node dist/src/infrastructure/migrate.js",
     "local:setup": "node scripts/setup-local.mjs",
     "local:bootstrap": "npm run build && node scripts/bootstrap-local.mjs",
-    "local:verify": "npm run build && node scripts/verify-local-runtime.mjs"
+    "local:verify": "npm run build && node scripts/verify-local-runtime.mjs",
+    "infinitepay:verify": "npm run build && node scripts/verify-infinitepay-runtime.mjs"
   },
   "dependencies": {
     "fastify": "5.12.7",

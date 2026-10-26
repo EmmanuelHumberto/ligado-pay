@@ -1,6 +1,6 @@
 # Provedores e critérios de habilitação
 
-Pesquisa preliminar em 25/10/2026. Documentação encontrada não comprova contratação, elegibilidade da conta, segurança de uma implantação nem aprovação para produção. Há adaptador InfinitePay com testes sintéticos, ainda sem conexão real ou habilitação na API; ver [limites e homologação](infinitepay.md).
+Pesquisa inicial em 25/10/2026, atualizada em 26/10/2026. Documentação encontrada não comprova homologação em produção. Há adaptador InfinitePay integrado à persistência/API por configuração local explícita, com criação real desligada por padrão; testes com respostas sintéticas, sem chamada ao provedor. Usuário confirmou integração habilitada e chave criada, sem seleção de sandbox; ver [limites e validação](infinitepay.md).
 
 ## Pix
 

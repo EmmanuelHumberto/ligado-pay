@@ -1,15 +1,22 @@
-export type PaymentState = 'PROCESSING' | 'PENDING' | 'UNCERTAIN';
+export type PaymentState = 'PROCESSING' | 'PENDING' | 'UNCERTAIN' | 'PAID_PIX' | 'REVIEW_REQUIRED';
+export interface PaymentProfile {
+  provider: 'simulated' | 'infinitepay';
+  environment: 'sandbox' | 'production';
+  account: string | null;
+}
 export interface Payment {
   id: string;
   applicationId: string;
   receiverId: string;
-  environment: 'sandbox';
+  environment: PaymentProfile['environment'];
+  provider: PaymentProfile['provider'];
   externalReference: string;
   amountCents: number;
   currency: 'BRL';
   state: PaymentState;
   providerReference: string | null;
   createdAt: string;
+  checkout: { url: string | null; expiresAt: string; exclusivePix: false; directQrAvailable: false } | null;
 }
 export interface CreatePayment {
   receiverId: string;
@@ -21,7 +28,7 @@ export interface CreatePayment {
 export interface Principal {
   applicationId: string;
   receiverIds: readonly string[];
-  permissions: readonly ('payments:create' | 'payments:read')[];
+  permissions: readonly ('payments:create' | 'payments:read' | 'payments:check')[];
   maxAmountCents: number;
   requestsPerMinute: number;
 }

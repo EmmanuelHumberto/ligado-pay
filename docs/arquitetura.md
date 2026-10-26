@@ -1,6 +1,6 @@
 # Arquitetura executável
 
-Base local de 25/10/2026. Monólito modular, exclusivamente API, com provedor simulado. Não habilitado para produção.
+Base local de 25/10/2026, atualizada em 26/10/2026. Monólito modular, exclusivamente API. Simulação é o padrão; a versão 0.2 permite composição local InfinitePay com criação real desligada por padrão. Não habilitado para implantação em produção. [Fluxo InfinitePay atual](infinitepay.md).
 
 ```mermaid
 flowchart TB
@@ -13,7 +13,7 @@ flowchart TB
     http[HTTP: autenticação, autorização, limites e validação]
     service[Aplicação: intenção de cobrança e transições]
     domain[Domínio: conceitos financeiros]
-    adapter[Porta de provedor: simulador local]
+    adapter[Porta de provedor: simulador ou InfinitePay]
     repo[Porta de persistência: PostgreSQL]
     http --> service
     service --> domain
@@ -23,21 +23,21 @@ flowchart TB
   end
   os -->|Identidade de serviço; referência opaca| http
   shop -.->|Integração futura| http
-  adapter -.->|Conectores reais ainda não implementados| psp[PSP contratado]
+  adapter -.->|Criação real desligada por padrão| psp[InfinitePay contratado]
 ```
 
 ## Direção das dependências
 
 - `src/domain`: tipos financeiros e erros; não conhece HTTP, PostgreSQL ou SystemOS.
 - `src/application`: casos de uso e portas; não importa o cliente de banco nem SDK de provedor.
-- `src/infrastructure`: repositório transacional, migrações e adaptador simulado.
+- `src/infrastructure`: repositórios transacionais, migrações, segredo protegido, simulador e adaptador InfinitePay.
 - `src/http`: autenticação de serviço, validação estrita e exposição dos casos de uso.
 - `src/main.ts`: composição, configuração, inicialização e desligamento.
 - `migrations`: SQL versionado com checksum e exclusão mútua do runner.
 
 ## Controles presentes nesta base
 
-- Inicialização somente local/sandbox, host fixo `127.0.0.1`; produção e provedores reais recusados. PostgreSQL também deve ficar em loopback, separado do SystemOS.
+- Inicialização somente local, host fixo `127.0.0.1`; implantação de produção recusada. Simulação/sandbox é o padrão; InfinitePay é opção explícita de conta financeira de produção, com criação desligada por padrão. PostgreSQL também deve ficar em loopback, separado do SystemOS.
 - Token local aleatório de 256 bits; configuração da API contém somente seu hash. Comparação de hash em tempo constante. Isso é uma credencial local de desenvolvimento, não substitui mTLS/identidade curta em produção.
 - Permissões e recebedores por aplicação. Consulta sempre limitada à aplicação e aos recebedores autorizados. Nenhuma identidade/credencial é aceita no corpo para sobrepor a autenticação.
 - Limite de corpo, timeouts, bloqueio de chamadas de navegador, schemas sem campos extras e sem coerção silenciosa. Sem confiança em cabeçalhos de proxy.
@@ -54,7 +54,7 @@ flowchart TB
 
 `POST /v1/payments` cria uma intenção simulada de Pix; `GET /v1/payments/:id` consulta. Há uma cobrança por referência externa, aplicação e recebedor. Parcelamento comercial, pagamentos parciais e novas tentativas de uma referência não são suportados nesta etapa.
 
-O simulador não gera QR pagável, link de checkout, transação real ou estado pago. A resposta informa `simulated: true` e `realPaymentsEnabled: false`. Não conectar essa simulação à aprovação real de serviços.
+O simulador não gera QR pagável, link de checkout, transação real ou estado pago. A resposta informa `simulated: true` e `realPaymentsEnabled: false`. Não conectar essa simulação à aprovação real de serviços. No modo InfinitePay, a resposta usa `simulated=false`, `provider=infinitepay` e ambiente financeiro `production`, com criação real conforme switch explícito. Pagamento confirmado é registrado com exclusividade de transação e eventos atômicos; os testes ainda são locais e não autorizam liberação de serviços reais.
 
 Não existem endpoints públicos de webhook, estorno ou administração. Eventos são persistidos, mas ainda não enviados. Nenhuma integração comercial foi migrada.
 

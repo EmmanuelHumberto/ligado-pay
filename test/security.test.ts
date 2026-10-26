@@ -6,6 +6,7 @@ import { authenticate, IngressLimiter } from '../src/http/authentication.js';
 import { createServer } from '../src/http/server.js';
 import { SimulatedProvider } from '../src/infrastructure/simulated-provider.js';
 import type { PaymentRepository } from '../src/application/ports.js';
+import { resolve } from 'node:path';
 
 const token = randomBytes(32).toString('base64url');
 const configuration = () => ({ mode: 'local', provider: 'simulated', environment: 'sandbox', port: 3305,
@@ -14,7 +15,7 @@ const configuration = () => ({ mode: 'local', provider: 'simulated', environment
     keyHash: createHash('sha256').update(token).digest('hex'), permissions: ['payments:create','payments:read'],
     maxAmountCents: 1000, requestsPerMinute: 20 }] });
 
-test('configuration refuses production, real provider, remote database and missing limits', () => {
+test('configuration refuses production service, incomplete real provider, remote database and missing limits', () => {
   assert.throws(() => parseConfig(configuration(), 'production'));
   for (const replacement of [{ provider: 'mercadopago' }, { provider: 'infinitepay' }, { mode: 'production' }, { environment: 'production' },
     { databaseUrl: 'postgresql://u:p@example.com/ligado_pay_test' }, { databaseUrl: 'postgresql://u:p@127.0.0.1/systemos' },
@@ -22,6 +23,21 @@ test('configuration refuses production, real provider, remote database and missi
     { credentials: [...configuration().credentials, ...configuration().credentials] }]) {
     assert.throws(() => parseConfig({ ...configuration(), ...replacement }, 'test'));
   }
+});
+
+test('InfinitePay local configuration requires production account label, explicit creation switch and a bound receiver', () => {
+  const config = { ...configuration(), provider: 'infinitepay', environment: 'production',
+    infinitepay: { receiverId: 'receiver-one', handle: 'merchant-contract',
+      redirectUrl: 'https://portal.example.com/payment-return', apiKeyFile: resolve('.local/fixture.dpapi'),
+      liveCreationEnabled: false } };
+  const parsed = parseConfig(config, 'development');
+  assert.equal(parsed.provider, 'infinitepay'); assert.equal(parsed.infinitepay?.liveCreationEnabled, false);
+  for (const change of [{ liveCreationEnabled: undefined }, { liveCreationEnabled: 'false' },
+    { receiverId: 'other-receiver' }, { apiKeyFile: './relative.key' }]) {
+    assert.throws(() => parseConfig({ ...config, infinitepay: { ...config.infinitepay, ...change } }, 'development'));
+  }
+  assert.throws(() => parseConfig({ ...config, environment: 'sandbox' }, 'development'));
+  assert.throws(() => parseConfig(config, 'production'));
 });
 
 test('authentication requires exact high entropy token and never exposes stored hash', () => {

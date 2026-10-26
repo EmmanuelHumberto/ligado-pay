@@ -1,29 +1,35 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import type { PaymentRepository } from '../application/ports.js';
-import type { CreatePayment, Payment, Principal } from '../domain/payment.js';
+import type { CreatePayment, Payment, Principal, PaymentProfile } from '../domain/payment.js';
 import { PaymentError } from '../domain/payment.js';
 
-interface PaymentRow {
+export interface PaymentRow {
   id: string; application_id: string; receiver_id: string; external_reference: string;
   amount_cents: string; state: Payment['state']; provider_reference: string | null;
   created_at: Date; request_hash: string;
+  provider: PaymentProfile['provider']; environment: PaymentProfile['environment'];
+  provider_account: string | null; checkout_url: string | null; checkout_expires_at: Date | null;
 }
-function payment(row: PaymentRow): Payment {
+export function toPayment(row: PaymentRow): Payment {
   return { id: row.id, applicationId: row.application_id, receiverId: row.receiver_id,
-    environment: 'sandbox', externalReference: row.external_reference, amountCents: Number(row.amount_cents),
-    currency: 'BRL', state: row.state, providerReference: row.provider_reference, createdAt: row.created_at.toISOString() };
+    provider: row.provider, environment: row.environment, externalReference: row.external_reference, amountCents: Number(row.amount_cents),
+    currency: 'BRL', state: row.state, providerReference: row.provider_reference, createdAt: row.created_at.toISOString(),
+    checkout: row.checkout_expires_at ? { url: row.checkout_url, expiresAt: row.checkout_expires_at.toISOString(),
+      exclusivePix: false, directQrAvailable: false } : null };
 }
-async function event(client: PoolClient, row: PaymentRow) {
+export async function insertEvent(client: PoolClient, row: PaymentRow) {
   const id = randomUUID();
   await client.query(`INSERT INTO payment_events(id,payment_id,application_id,receiver_id,environment,event_type)
-    VALUES($1,$2,$3,$4,'sandbox',$5)`, [id, row.id, row.application_id, row.receiver_id, row.state]);
+    VALUES($1,$2,$3,$4,$5,$6)`, [id, row.id, row.application_id, row.receiver_id, row.environment, row.state]);
   await client.query('INSERT INTO outbox(event_id) VALUES($1)', [id]);
 }
 
 export class PostgresRepository implements PaymentRepository {
-  constructor(private readonly pool: Pool) {}
-  private async transaction<T>(operation: (client: PoolClient) => Promise<T>): Promise<T> {
+  constructor(protected readonly pool: Pool, protected readonly profile: PaymentProfile = {
+    provider: 'simulated', environment: 'sandbox', account: null,
+  }) {}
+  protected async transaction<T>(operation: (client: PoolClient) => Promise<T>): Promise<T> {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
@@ -39,47 +45,54 @@ export class PostgresRepository implements PaymentRepository {
   async reserve(principal: Principal, input: CreatePayment, key: string) {
     const hash = createHash('sha256').update(JSON.stringify([
       input.receiverId, input.externalReference, input.amountCents, input.currency, input.method,
+      ...(this.profile.provider === 'infinitepay' ? [this.profile.provider, this.profile.account] : []),
     ])).digest('hex');
     return this.transaction(async client => {
       // Serializes creation per application+receiver even across API instances.
       await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',
-        [JSON.stringify([principal.applicationId, input.receiverId, 'sandbox'])]);
+        [JSON.stringify([principal.applicationId, input.receiverId, this.profile.environment])]);
       const existing = await client.query<PaymentRow>(`SELECT * FROM payments
-        WHERE application_id=$1 AND receiver_id=$2 AND environment='sandbox' AND idempotency_key=$3`,
-      [principal.applicationId, input.receiverId, key]);
+        WHERE application_id=$1 AND receiver_id=$2 AND environment=$4 AND idempotency_key=$3`,
+      [principal.applicationId, input.receiverId, key, this.profile.environment]);
       if (existing.rows[0]) {
         if (existing.rows[0].request_hash !== hash) throw new PaymentError(409, 'IDEMPOTENCY_CONFLICT');
-        return { payment: payment(existing.rows[0]), created: false };
+        return { payment: toPayment(existing.rows[0]), created: false };
       }
       const reference = await client.query(`SELECT 1 FROM payments WHERE application_id=$1
-        AND receiver_id=$2 AND environment='sandbox' AND external_reference=$3`,
-      [principal.applicationId, input.receiverId, input.externalReference]);
+        AND receiver_id=$2 AND environment=$4 AND external_reference=$3`,
+      [principal.applicationId, input.receiverId, input.externalReference, this.profile.environment]);
       if (reference.rowCount) throw new PaymentError(409, 'REFERENCE_ALREADY_CHARGED');
       const inserted = await client.query<PaymentRow>(`INSERT INTO payments
         (id,application_id,receiver_id,environment,external_reference,amount_cents,currency,method,
-         provider,idempotency_key,request_hash,state)
-        VALUES($1,$2,$3,'sandbox',$4,$5,'BRL','pix','simulated',$6,$7,'PROCESSING') RETURNING *`,
-      [randomUUID(), principal.applicationId, input.receiverId, input.externalReference, input.amountCents, key, hash]);
+         provider,idempotency_key,request_hash,state,provider_account,checkout_expires_at)
+        VALUES($1,$2,$3,$8,$4,$5,'BRL','pix',$9,$6,$7,'PROCESSING',$10,
+          CASE WHEN $9='infinitepay' THEN clock_timestamp()+interval '1 hour' ELSE NULL END) RETURNING *`,
+      [randomUUID(), principal.applicationId, input.receiverId, input.externalReference, input.amountCents, key, hash,
+        this.profile.environment, this.profile.provider, this.profile.account]);
       const row = inserted.rows[0]!;
-      await event(client, row);
-      return { payment: payment(row), created: true };
+      await insertEvent(client, row);
+      return { payment: toPayment(row), created: true };
     });
   }
 
   async find(principal: Principal, id: string) {
     const result = await this.pool.query<PaymentRow>(`SELECT * FROM payments WHERE id=$1 AND application_id=$2
-      AND receiver_id=ANY($3::text[]) AND environment='sandbox'`, [id, principal.applicationId, principal.receiverIds]);
-    return result.rows[0] ? payment(result.rows[0]) : null;
+      AND receiver_id=ANY($3::text[]) AND environment=$4 AND provider=$5
+      AND provider_account IS NOT DISTINCT FROM $6`,
+    [id, principal.applicationId, principal.receiverIds, this.profile.environment, this.profile.provider, this.profile.account]);
+    return result.rows[0] ? toPayment(result.rows[0]) : null;
   }
 
   async finish(id: string, state: 'PENDING' | 'UNCERTAIN', providerReference: string | null) {
     return this.transaction(async client => {
       const updated = await client.query<PaymentRow>(`UPDATE payments SET state=$2,provider_reference=$3,
-        updated_at=clock_timestamp() WHERE id=$1 AND state='PROCESSING' RETURNING *`, [id, state, providerReference]);
+        updated_at=clock_timestamp() WHERE id=$1 AND state='PROCESSING' AND provider=$4 AND environment=$5
+        AND provider_account IS NOT DISTINCT FROM $6 RETURNING *`,
+      [id, state, providerReference, this.profile.provider, this.profile.environment, this.profile.account]);
       const row = updated.rows[0];
       if (!row) throw new PaymentError(409, 'INVALID_TRANSITION');
-      await event(client, row);
-      return payment(row);
+      await insertEvent(client, row);
+      return toPayment(row);
     });
   }
 
@@ -93,7 +106,8 @@ export class PostgresRepository implements PaymentRepository {
 
   async ready() {
     // Requires migrated tables, not just a reachable database.
-    await this.pool.query('SELECT id FROM payments LIMIT 0');
+    await this.pool.query('SELECT id,provider_account,checkout_url,checkout_expires_at FROM payments LIMIT 0');
     await this.pool.query('SELECT event_id FROM outbox LIMIT 0');
+    await this.pool.query('SELECT payment_id FROM provider_settlements LIMIT 0');
   }
 }

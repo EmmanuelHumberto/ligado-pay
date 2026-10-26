@@ -46,7 +46,7 @@ Requisitos e sequência de entrega: [arquitetura e segurança](docs/arquitetura-
 
 ## Estado de implementação
 
-Base local executável em TypeScript/Fastify com PostgreSQL próprio, autenticação de serviço, autorização por aplicação/recebedor, intenção durável, idempotência, eventos/outbox transacionais e provedor simulado. Produção e pagamentos reais estão bloqueados. Nenhum pagamento foi migrado e nenhum serviço foi publicado. O SystemOS e os demais projetos permanecem independentes desta preparação.
+Base local executável em TypeScript/Fastify com PostgreSQL próprio, autenticação de serviço, autorização por aplicação/recebedor, intenção durável, idempotência e eventos/outbox transacionais. O padrão é simulado. Há composição local selecionável para InfinitePay, com segredo protegido, link persistido e confirmação por consulta; criação real fica desligada por padrão. A conta é identificada como produção, sem inventar sandbox. Implantação em produção ainda bloqueada. Nenhum pagamento foi migrado e nenhum serviço foi publicado. SystemOS, portal e app permanecem independentes desta preparação.
 
 - [Arquitetura executável e controles presentes](docs/arquitetura.md)
 - [Modelo de ameaças e pendências](docs/modelo-ameacas.md)

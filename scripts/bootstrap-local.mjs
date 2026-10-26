@@ -20,7 +20,8 @@ try {
   await pool.query('GRANT USAGE ON SCHEMA public TO ligado_pay_runtime');
   await pool.query('REVOKE ALL ON payments,request_limits,payment_events,outbox FROM ligado_pay_runtime');
   await pool.query('GRANT SELECT, INSERT ON payments,request_limits TO ligado_pay_runtime');
-  await pool.query('GRANT UPDATE(state,provider_reference,updated_at) ON payments TO ligado_pay_runtime');
+  await pool.query('GRANT UPDATE(state,provider_reference,updated_at,checkout_url,review_reason) ON payments TO ligado_pay_runtime');
+  await pool.query('GRANT SELECT, INSERT ON provider_settlements TO ligado_pay_runtime');
   await pool.query('GRANT UPDATE(attempts) ON request_limits TO ligado_pay_runtime');
   await pool.query('GRANT SELECT, INSERT ON payment_events TO ligado_pay_runtime');
   await pool.query('GRANT SELECT, INSERT ON outbox TO ligado_pay_runtime');

@@ -1,4 +1,10 @@
 export const idempotencyKey = { type: 'string', minLength: 16, maxLength: 100, pattern: '^[A-Za-z0-9_-]+$' };
+export const checkoutHintsBody = {
+  type: 'object', additionalProperties: false, required: ['orderNsu','transactionNsu','slug'], properties: {
+    orderNsu: { type: 'string', format: 'uuid' }, transactionNsu: { type: 'string', format: 'uuid' },
+    slug: { type: 'string', minLength: 1, maxLength: 128, pattern: '^[A-Za-z0-9_-]+$' },
+  },
+};
 export const paymentBody = {
   type: 'object', additionalProperties: false,
   required: ['receiverId','externalReference','amountCents','currency','method'], properties: {
