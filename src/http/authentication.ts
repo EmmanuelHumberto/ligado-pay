@@ -2,12 +2,17 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import type { Credential } from '../config.js';
 import type { Principal } from '../domain/payment.js';
 
-export function authenticate(header: string | undefined, credentials: readonly Credential[]): Principal | null {
+export function authenticate(header: string | undefined, credentials: readonly Credential[], now = Date.now()): Principal | null {
   if (!header || !/^Bearer [A-Za-z0-9_-]{43}$/.test(header)) return null;
   const hash = createHash('sha256').update(header.slice(7)).digest();
   let found: Credential | undefined;
   for (const credential of credentials) {
-    if (timingSafeEqual(hash, Buffer.from(credential.keyHash, 'hex'))) found = credential;
+    const matches = timingSafeEqual(hash, Buffer.from(credential.keyHash, 'hex'));
+    const active = Number.isFinite(now) &&
+      (credential.notBefore === undefined || now >= Date.parse(credential.notBefore)) &&
+      (credential.expiresAt === undefined || now < Date.parse(credential.expiresAt)) &&
+      (credential.revokedAt === undefined || now < Date.parse(credential.revokedAt));
+    if (matches && active) found = credential;
   }
   if (!found) return null;
   // Never attach the credential hash to the request or response.

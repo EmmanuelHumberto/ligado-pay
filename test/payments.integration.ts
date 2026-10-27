@@ -16,6 +16,7 @@ import { InfinitePayTransport } from '../src/infrastructure/infinitepay/transpor
 import {InfinitePayNotifications,notificationHints} from '../src/infrastructure/infinitepay/notifications.js';
 import {reconcileBankRefund} from '../src/application/refund-reconciliation.js';
 import {PaymentOperations} from '../src/application/payment-operations.js';
+import {parseConfig} from '../src/config.js';
 
 const token = randomBytes(32).toString('base64url');
 let pool: pg.Pool;
@@ -38,6 +39,38 @@ before(async () => {
   repository = new PostgresRepository(pool);
 });
 after(async () => { await pool?.end(); });
+
+test('credential rotation preserves payment ownership, idempotency, quotas and revocation across HTTP servers',async t=>{
+ const old=randomBytes(32).toString('base64url'),fresh=randomBytes(32).toString('base64url');
+ const p={...principal(),requestsPerMinute:60,maxPayments:1};
+ const start=new Date(Date.now()-10000).toISOString();
+ const raw={mode:'local',provider:'simulated',environment:'sandbox',port:3305,
+  databaseUrl:'postgresql://runtime:synthetic@127.0.0.1:55439/ligado_pay_test',credentials:[
+   {...p,keyHash:createHash('sha256').update(old).digest('hex'),keyId:'rotation-old',notBefore:start,expiresAt:new Date(Date.now()+60000).toISOString()},
+   {...p,keyHash:createHash('sha256').update(fresh).digest('hex'),keyId:'rotation-new',notBefore:start}]};
+ let providerCalls=0;
+ const provider={name:'simulated' as const,async create(){providerCalls++;return {reference:'synthetic-rotation'};}};
+ const api=createServer(repository,provider,parseConfig(raw,'test').credentials);t.after(()=>api.close());
+ const payload=input(),key='rotation-idempotency';
+ const first=await api.inject({method:'POST',url:'/v1/payments',headers:{authorization:'Bearer '+old,'idempotency-key':key},payload});
+ assert.equal(first.statusCode,201);
+ const id=first.json<{id:string}>().id;
+ const replay=await api.inject({method:'POST',url:'/v1/payments',headers:{authorization:'Bearer '+fresh,'idempotency-key':key},payload});
+ assert.equal(replay.statusCode,200);assert.equal(replay.json<{id:string}>().id,id);assert.equal(providerCalls,1);
+ const capped=await api.inject({method:'POST',url:'/v1/payments',headers:{authorization:'Bearer '+fresh,'idempotency-key':'rotation-other-key'},payload:input()});
+ assert.equal(capped.json<{error:string}>().error,'RESERVATION_LIMIT_REACHED');assert.equal(providerCalls,1);
+ const revoked={...raw,credentials:[{...raw.credentials[0],revokedAt:new Date(Date.now()-1).toISOString()},raw.credentials[1]]};
+ const next=createServer(repository,provider,parseConfig(revoked,'test').credentials);t.after(()=>next.close());
+ assert.equal((await next.inject({url:'/v1/payments/'+id,headers:{authorization:'Bearer '+old}})).statusCode,401);
+ const read=await next.inject({url:'/v1/payments/'+id,headers:{authorization:'Bearer '+fresh}});
+ assert.equal(read.statusCode,200);assert.equal(read.json<{id:string}>().id,id);
+ for(const field of ['keyHash','keyId','notBefore','expiresAt','revokedAt'])assert.equal(Object.hasOwn(read.json(),field),false);
+ const quotaPrincipal={...p,applicationId:'quota-'+randomUUID(),requestsPerMinute:1};
+ const quota=createServer(repository,provider,parseConfig({...raw,credentials:raw.credentials.map(c=>({...c,...quotaPrincipal}))},'test').credentials);
+ t.after(()=>quota.close());
+ assert.equal((await quota.inject({url:'/health/ready',headers:{authorization:'Bearer '+old}})).statusCode,200);
+ assert.equal((await quota.inject({url:'/health/ready',headers:{authorization:'Bearer '+fresh}})).statusCode,429);
+});
 
 test('operations recover exhausted checks, preserve payment truth and expose safe expiry alerts',async()=>{
  const p={...principal(),permissions:['payments:read','payments:create','payments:check','payments:operations'] as const};
@@ -189,9 +222,15 @@ test('public notifications persist before acknowledgement and only authenticated
   const id=made.payment.id,transaction=randomUUID();
   const notifications=new InfinitePayNotifications(pool,service,p);
   const ops=new PaymentOperations(pool,service);
+  const proxyKey=randomBytes(32).toString('hex');
+  const sign=(body:unknown)=>{
+    const timestamp=String(Date.now()),source='192.0.2.2';
+    return {'x-lp-time':timestamp,'x-lp-source':source,'x-lp-signature':createHmac('sha256',proxyKey)
+      .update(['POST','/webhooks/infinitepay',timestamp,source,createHash('sha256').update(JSON.stringify(body)).digest('hex')].join('\n')).digest('hex')};
+  };
   const api=createServer(repo,new SimulatedProvider(),[
     {...p,applicationId:'foreign-app',keyHash:createHash('sha256').update(token).digest('hex')}
-  ],service,notifications,ops);
+  ],service,notifications,ops,proxyKey);
   const payload={order_nsu:id,transaction_nsu:transaction,invoice_slug:'invoice',paid:true,amount:1};
   try{
     const denied=await api.inject({method:'POST',url:'/v1/payments/'+id+'/check',
@@ -199,17 +238,18 @@ test('public notifications persist before acknowledgement and only authenticated
     assert.equal(denied.statusCode,404);
     assert.equal((await pool.query('SELECT count(*)::int n FROM checkout_notifications WHERE payment_id=$1',[id])).rows[0].n,0);
     for(const event of ['refunded','canceled']){
-      assert.equal((await api.inject({method:'POST',url:'/webhooks/infinitepay',payload:{event,order_nsu:id}})).statusCode,200);
+      assert.equal((await api.inject({method:'POST',url:'/webhooks/infinitepay',headers:sign({event,order_nsu:id}),payload:{event,order_nsu:id}})).statusCode,200);
     }
     assert.equal((await service.get(p,id)).state,'PENDING');
     assert.equal((await pool.query('SELECT count(*)::int n FROM payment_operations WHERE payment_id=$1 AND application_id=$2',[id,p.applicationId])).rows[0].n,2);
-    const unknown=await api.inject({method:'POST',url:'/webhooks/infinitepay',payload:{...payload,order_nsu:randomUUID()}});
+    const unknownPayload={...payload,order_nsu:randomUUID()};
+    const unknown=await api.inject({method:'POST',url:'/webhooks/infinitepay',headers:sign(unknownPayload),payload:unknownPayload});
     assert.equal(unknown.statusCode,200);assert.equal(checks,0);
     const foreign=new InfinitePayNotifications(pool,service,{...p,applicationId:'other-app'});
     await foreign.enqueue(notificationHints(payload));assert.equal(checks,0);
-    assert.equal((await api.inject({method:'POST',url:'/webhooks/infinitepay',payload:{paid:true}})).statusCode,400);
+    assert.equal((await api.inject({method:'POST',url:'/webhooks/infinitepay',headers:sign({paid:true}),payload:{paid:true}})).statusCode,400);
     assert.equal((await api.inject({method:'POST',url:'/webhooks/infinitepay',headers:{origin:'https://evil.example'},payload})).statusCode,403);
-    for(let i=0;i<3;i++)assert.equal((await api.inject({method:'POST',url:'/webhooks/infinitepay',payload})).statusCode,200);
+    for(let i=0;i<3;i++)assert.equal((await api.inject({method:'POST',url:'/webhooks/infinitepay',headers:sign(payload),payload})).statusCode,200);
     assert.equal(checks,0);assert.equal((await service.get(p,id)).state,'PENDING');
     assert.equal((await pool.query('SELECT count(*)::int n FROM checkout_notifications WHERE payment_id=$1',[id])).rows[0].n,1);
     await Promise.all([notifications.tick(),new InfinitePayNotifications(pool,service,p).tick()]);

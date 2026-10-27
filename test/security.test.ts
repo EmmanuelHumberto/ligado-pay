@@ -1,12 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { randomBytes, createHash } from 'node:crypto';
+import { randomBytes, createHash, createHmac } from 'node:crypto';
 import { parseConfig } from '../src/config.js';
 import { authenticate, IngressLimiter } from '../src/http/authentication.js';
 import { createServer } from '../src/http/server.js';
 import { SimulatedProvider } from '../src/infrastructure/simulated-provider.js';
 import type { PaymentRepository } from '../src/application/ports.js';
 import { resolve } from 'node:path';
+import type { InfinitePayNotifications } from '../src/infrastructure/infinitepay/notifications.js';
 
 const token = randomBytes(32).toString('base64url');
 const configuration = () => ({ mode: 'local', provider: 'simulated', environment: 'sandbox', port: 3305,
@@ -14,6 +15,58 @@ const configuration = () => ({ mode: 'local', provider: 'simulated', environment
   credentials: [{ applicationId: 'app-one', receiverIds: ['receiver-one'],
     keyHash: createHash('sha256').update(token).digest('hex'), permissions: ['payments:create','payments:read'],
     maxAmountCents: 1000, requestsPerMinute: 20 }] });
+
+test('private production is explicit and preserves financial identity and limits', () => {
+  const raw = { ...configuration(), mode: 'private-production', provider: 'infinitepay', environment: 'production',
+    credentials: [{...configuration().credentials[0]!, permissions:['payments:create','payments:read','payments:check']}],
+    infinitepay: { receiverId:'receiver-one', handle:'merchant-contract', liveCreationEnabled:false,
+      apiKeyFile:resolve('.local/fixture.dpapi'), redirectUrl:'https://portal.example.com/payment-return',
+      webhookUrl:'https://portal.example.com/ligado-pay/webhooks/infinitepay', webhookApplicationId:'app-one',
+      notificationProxyKeyFile:resolve('.local/proxy.dpapi') } };
+  const parsed = parseConfig(raw, 'production');
+  assert.equal(parsed.infinitepay?.receiverId, 'receiver-one');
+  assert.equal(parsed.infinitepay?.liveCreationEnabled, false);
+  assert.equal(parsed.credentials[0]?.keyHash, raw.credentials[0]?.keyHash);
+  assert.equal(parsed.credentials[0]?.maxPayments, undefined);
+  for (const env of [undefined,'development','test']) assert.throws(() => parseConfig(raw, env));
+  for (const change of [{mode:'local'}, {provider:'simulated'}, {environment:'sandbox'},
+    {databaseUrl:'postgresql://runtime:secret@example.com/ligado_pay_test'}]) {
+    assert.throws(() => parseConfig({...raw,...change}, 'production'));
+  }
+  for (const change of [{notificationProxyKeyFile:undefined}, {notificationProxyKeyFile:'relative'},
+    {webhookApplicationId:'unknown-app'}, {receiverId:'unknown-receiver'},
+    {redirectUrl:'http://portal.example.com/'}, {redirectUrl:'https://user:secret@portal.example.com/'},
+    {webhookUrl:'https://another.example.com/ligado-pay/webhooks/infinitepay'}]) {
+    assert.throws(() => parseConfig({...raw,infinitepay:{...raw.infinitepay,...change}}, 'production'));
+  }
+  assert.throws(() => parseConfig({...raw,mode:'local',infinitepay:{...raw.infinitepay,notificationProxyKeyFile:undefined}}, 'development'));
+});
+
+test('HTTP notification construction fails closed and rejects absent, expired and wrong proxy signatures', async t => {
+  let accepted = 0;
+  const notifications = {async enqueue() { accepted++; }} as unknown as InfinitePayNotifications;
+  const repository = {} as PaymentRepository;
+  const credentials = parseConfig(configuration(), 'test').credentials;
+  for (const key of [undefined,'','short','x'.repeat(31),'x'.repeat(32)+'\n']) {
+    assert.throws(() => createServer(repository,new SimulatedProvider(),credentials,undefined,notifications,undefined,key));
+  }
+  const key = randomBytes(32).toString('hex');
+  const api = createServer(repository,new SimulatedProvider(),credentials,undefined,notifications,undefined,key);
+  t.after(() => api.close());
+  const payload = {order_nsu:'11111111-1111-4111-8111-111111111111',transaction_nsu:'22222222-2222-4222-8222-222222222222',invoice_slug:'synthetic-slug'};
+  function headers(secret:string,time=Date.now()) {
+    const timestamp=String(time),source='192.0.2.1';
+    const digest=createHash('sha256').update(JSON.stringify(payload)).digest('hex');
+    return {'x-lp-time':timestamp,'x-lp-source':source,'x-lp-signature':createHmac('sha256',secret)
+      .update(['POST','/webhooks/infinitepay',timestamp,source,digest].join('\n')).digest('hex')};
+  }
+  for (const h of [{},headers('wrong-key'),headers(key,Date.now()-120000)]) {
+    assert.equal((await api.inject({method:'POST',url:'/webhooks/infinitepay',headers:h,payload})).statusCode,403);
+  }
+  assert.equal(accepted,0);
+  assert.equal((await api.inject({method:'POST',url:'/webhooks/infinitepay',headers:headers(key),payload})).statusCode,200);
+  assert.equal(accepted,1);
+});
 
 test('optional lifetime cap is validated and retained in the authenticated principal', () => {
   const raw = configuration();

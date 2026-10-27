@@ -17,7 +17,11 @@ declare module 'fastify' { interface FastifyRequest { principal: Principal | nul
 const uuid = { type: 'string', pattern: '^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$' };
 
 export function createServer(repository: PaymentRepository, provider: PaymentProvider, credentials: Credential[], checkout?: CheckoutService,
-  notifications?:InfinitePayNotifications,operations?:PaymentOperations,notificationProxyKey?:string) {
+  notifications?:InfinitePayNotifications,operations?:PaymentOperations,notificationProxyKey?:string,
+  runtimeMode: 'local' | 'private-production' = 'local') {
+  if (notifications && (!notificationProxyKey || !/^[\x21-\x7e]{32,2048}$/.test(notificationProxyKey))) {
+    throw new Error('Authenticated notification proxy required.');
+  }
   const api = Fastify({ logger: false, trustProxy: false, bodyLimit: 4096,
     requestTimeout: 10_000, connectionTimeout: 10_000, keepAliveTimeout: 5000,
     maxRequestsPerSocket: 100, ajv: { customOptions: { removeAdditional: false, coerceTypes: false, useDefaults: false } } });
@@ -31,8 +35,6 @@ export function createServer(repository: PaymentRepository, provider: PaymentPro
     reply.headers({ 'cache-control': 'no-store', 'x-content-type-options': 'nosniff',
       'x-frame-options': 'DENY', 'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
       'referrer-policy': 'no-referrer' });
-    const isNotification=notifications&&request.method==='POST'&&request.routeOptions.url===notificationPath;
-    if(isNotification&&!notificationProxyKey&&!notificationIngress.allow(request.ip))throw new PaymentError(429,'RATE_LIMITED');
     if (request.headers.origin || request.headers['sec-fetch-site']) throw new PaymentError(403, 'SERVER_CLIENT_REQUIRED');
     if (request.routeOptions.url === '/health/live') return;
     if(notifications&&request.method==='POST'&&request.routeOptions.url===notificationPath)return;
@@ -87,7 +89,7 @@ export function createServer(repository: PaymentRepository, provider: PaymentPro
   });
   api.get('/health/ready', async () => {
     await repository.ready();
-    return { status: 'ready', environment: checkout ? 'production' : 'sandbox', ...metadata };
+    return { status: 'ready', runtimeMode, environment: checkout ? 'production' : 'sandbox', ...metadata };
   });
   api.post<{ Body: CreatePayment; Headers: { 'idempotency-key': string } }>('/v1/payments', {
     schema: {

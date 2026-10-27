@@ -1,4 +1,51 @@
+## Publicação concluída após nova autorização — 27/10/2026
+
+UAC aceito na nova tentativa. Suporte à rotação publicado na release
+release-eef4092b0e30427ab948b4454923148a, manifesto gateway
+1603e92efdd0b1ea18851a1caa49ff846322a827f80eb55cb96625dd14c3d819.
+Build API/Web 87b40668-f6f2-482d-b11c-9efeaa225a46 preservado. API/Web/Gateway,
+identidades, loopback, prontidão autenticada e domínio público verificados.
+Uma cobrança existente foi consultada pela API autenticada, com estado, valor e
+referência iguais ao banco, em transação somente leitura e sem chamar o provedor.
+
+A chave operacional não foi substituída. Publicou-se a capacidade de coexistência,
+expiração e revogação; o provisionamento e a troca real DPAPI entre contas de serviço
+continuam como procedimento administrativo coordenado. Sem migração, cobrança ou
+movimentação financeira. Recuperação administrativa protegida em
+publication-d3a699e5af154ee7b40c5c16886f3af3. A nota anterior de cancelamento é histórica.
+
+# Rotação de credenciais implementada, não publicada — 27/10/2026
+
+36 unitários e 26 integrados do gateway, cinco testes de configuração SystemOS
+aprovados; contrato OpenAPI confere. Duas chaves por aplicação, políticas iguais,
+coexistência até 24 horas, ativação/expiração/revogação, idempotência e cotas
+compartilhadas verificadas. Testado reload/retorno de seleção DPAPI sob operador.
+UAC da publicação cancelado: runtime e segredo operacional não alterados.
+Próximas ações e limites em ROTACAO_CREDENCIAIS.md. Não reaplicar piloto bancário.
+
+# Publicação de produção privada concluída — 27/10/2026
+
+Etapa 2 publicada na release release-a24607afec584f19a321546d34f8b3e1.
+Gateway em private-production/NODE_ENV=production, prontidão autenticada confirmada.
+33 unitários e 25 integrados; contrato e reversão sintética aprovados. Cópia de
+recuperação do operador sincronizada e backup posterior passou. Detalhes atuais
+em PRODUCAO_PRIVADA.md; as seções de “não publicado” abaixo são históricas.
+Nenhum pagamento real foi criado ou devolvido. Próxima etapa do plano: 3DS e CI
+Android, sem reexecutar testes bancários já pagos.
+
+# Retomada da próxima rodada — 27/10/2026
+
+Implementado e compilado modo private-production com NODE_ENV=production e
+exigência do proxy tanto na configuração quanto na fábrica HTTP. 33 unitários e
+25 integrados aprovados; sem nova operação financeira. Não publicado ainda.
+Próxima ação concreta: ativação coordenada descrita em PRODUCAO_PRIVADA.md.
+As notas históricas abaixo não substituem esse estado.
+
 # Estado de retomada atualizado — 27/10/2026
+
+Atualização de implantação: API/Web no build `87b40668-f6f2-482d-b11c-9efeaa225a46`, publicador isolado implementado e usado. Gateway reiniciado sob a mesma identidade e com código compilado conferido igual ao anterior; configuração financeira preservada. Orientações em `../../os-system-web/docs/ISOLAMENTO_RUNTIME_WINDOWS.md`. As indicações abaixo de publicador ausente e renderizador não publicado são anteriores a essa atualização.
+
+Próxima rodada: ler o [plano validado da revisão externa](../../os-system-web/docs/PROXIMA_RODADA_SEGURANCA_2026-10-27.md). Prioridades do gateway: produção privada explícita, exigência uniforme do proxy HMAC e rotação de credenciais, preservando identidades e pagamentos. Não automatizar devoluções sem contrato do provedor nem upload externo sem decisão do usuário. Apenas documentação nesta atualização.
 
 Estado consolidado em 27/10/2026. Este registro substitui as indicações antigas de migração inativa, gateway original ou PAY-07 sem isolamento aplicado. Relatos anteriores são histórico de execução.
 
@@ -346,3 +393,8 @@ Há mudanças locais anteriores de portal/login/documentos preservadas. Esta rod
 - O teste administrativo em portas separadas foi bloqueado pela revisão automática ("blocked by policy"); não contornar a rejeição com outro método. Diagnóstico somente de leitura foi permitido e executado. Node não criou stderr/stdout sob as tarefas. Lançador atualizado no repositório define PSModulePath antes de carregar cmdlets e passou em teste sintético WinPS5; teste sob conta dedicada permanece pendente. Protótipo -Install foi bloqueado para evitar repetição da troca sem validação.
 - Scripts experimentais de reparo/recriação foram retirados; preservar evidências privadas .runtime/runtime-isolation-result.json e isolation-readonly-diagnostic.json para diagnóstico. Diretórios protegidos em ProgramData e perfis das tentativas não foram apagados.
 - Contêiner de teste os-ligado-homologacao-postgres-1 voltou a parado. Contêineres operacionais preservados. Nenhum commit/push nesta rodada.
+
+
+## Consolidação de 27/10/2026
+
+Produção privada e suporte de coexistência/revogação publicados. A chave operacional Bearer não foi rotacionada. Tipos Node agora alinhados ao runtime 24 (24.19.2); 36 unitários, 26 integrados e contrato aprovados. A publicação coordenada do SystemOS atualiza o manifesto do gateway preservando configuração, recebedor e dados. Conexão de banco restrita e CSP pertencem ao SystemOS; o gateway continua exclusivamente uma API de pagamentos. Não repetir cobranças de teste já confirmadas.

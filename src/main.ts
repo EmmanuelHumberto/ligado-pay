@@ -40,7 +40,7 @@ try {
   }
   const operations=checkout?new PaymentOperations(pool,checkout):undefined;
   if(operations){await pool.query('SELECT id FROM payment_operations LIMIT 0');await pool.query('SELECT operation_id FROM operation_resolutions LIMIT 0');await pool.query('SELECT id FROM bank_refund_reconciliations LIMIT 0');}
-  const api = createServer(repository, new SimulatedProvider(), config.credentials, checkout,notifications,operations,settings?.notificationProxyKeyFile?loadProviderSecret(settings.notificationProxyKeyFile):undefined);
+  const api = createServer(repository, new SimulatedProvider(), config.credentials, checkout,notifications,operations,settings?.notificationProxyKeyFile?loadProviderSecret(settings.notificationProxyKeyFile):undefined,config.mode);
   await api.listen({ port: config.port, host: '127.0.0.1' });
   notifications?.start();
   console.log(`Ligado Pay listening on 127.0.0.1:${config.port}. Provider: ${config.provider}. Live creation: ${checkout?.creationEnabled ?? false}.`);
