@@ -118,12 +118,14 @@ export class PostgresRepository implements PaymentRepository {
     });
   }
 
-  async consumeRequest(principal: Principal) {
+  async consumeRequest(principal: Principal,operation?:'read'|'create'|'check'|'operations') {
+    const limit=operation==='read'?(principal.readRequestsPerMinute??principal.requestsPerMinute):
+      operation==='check'?(principal.checkRequestsPerMinute??principal.requestsPerMinute):principal.requestsPerMinute;
     const result = await this.pool.query<{ attempts: number }>(`INSERT INTO request_limits(application_id,window_start,attempts)
       VALUES($1,date_trunc('minute',clock_timestamp()),1) ON CONFLICT(application_id,window_start)
       DO UPDATE SET attempts=LEAST(request_limits.attempts+1,$2+1) RETURNING attempts`,
-    [principal.applicationId, principal.requestsPerMinute]);
-    return result.rows[0]!.attempts <= principal.requestsPerMinute;
+    [principal.applicationId+(operation?':'+operation:''),limit]);
+    return result.rows[0]!.attempts <= limit;
   }
 
   async ready() {

@@ -1,7 +1,7 @@
 import type { Pool } from 'pg';
 import type { CheckoutRepository } from '../application/checkout-service.js';
 import type { CheckoutLink, CheckoutObservation } from '../application/checkout-connector.js';
-import type { Payment } from '../domain/payment.js';
+import type { Payment, Principal } from '../domain/payment.js';
 import { PaymentError } from '../domain/payment.js';
 import { PostgresRepository, toPayment, insertEvent } from './postgres-repository.js';
 import type { PaymentRow } from './postgres-repository.js';
@@ -9,6 +9,15 @@ import type { PaymentRow } from './postgres-repository.js';
 export class PostgresCheckoutRepository extends PostgresRepository implements CheckoutRepository {
   constructor(pool: Pool, account: string) { super(pool, { provider: 'infinitepay', environment: 'production', account }); }
 
+  get operationalAccount() { return this.profile.account!; }
+
+  private async withRefund(payment:Payment|null){
+    if(!payment)return null;
+    const total=Number((await this.pool.query('SELECT coalesce(sum(amount_cents),0)::text amount FROM bank_refund_reconciliations WHERE payment_id=$1',[payment.id])).rows[0].amount);
+    return {...payment,refundedAmountCents:total};
+  }
+  override async find(principal:Principal,id:string){return this.withRefund(await super.find(principal,id));}
+  override async findByReference(principal:Principal,receiverId:string,reference:string){return this.withRefund(await super.findByReference(principal,receiverId,reference));}
   async finishCheckout(id: string, result: CheckoutLink | null) {
     if (result && result.orderNsu !== id) throw new PaymentError(409, 'PROVIDER_REFERENCE_MISMATCH');
     return this.transaction(async client => {

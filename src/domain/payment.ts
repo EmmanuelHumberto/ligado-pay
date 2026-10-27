@@ -12,6 +12,7 @@ export interface Payment {
   provider: PaymentProfile['provider'];
   externalReference: string;
   amountCents: number;
+  refundedAmountCents?: number;
   currency: 'BRL';
   state: PaymentState;
   providerReference: string | null;
@@ -31,6 +32,8 @@ export interface Principal {
   permissions: readonly ('payments:create' | 'payments:read' | 'payments:check' | 'payments:operations')[];
   maxAmountCents: number;
   requestsPerMinute: number;
+  readRequestsPerMinute?: number;
+  checkRequestsPerMinute?: number;
   /** Optional lifetime reservation cap per application/receiver/environment, including uncertain outcomes. */
   maxPayments?: number;
 }

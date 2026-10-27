@@ -1,6 +1,6 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { randomBytes, randomUUID, createHash } from 'node:crypto';
+import { randomBytes, randomUUID, createHash, createHmac } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import pg from 'pg';
 import { migrate } from '../src/infrastructure/migrate.js';
@@ -14,6 +14,7 @@ import { CheckoutService } from '../src/application/checkout-service.js';
 import { InfinitePayCheckout } from '../src/infrastructure/infinitepay/checkout.js';
 import { InfinitePayTransport } from '../src/infrastructure/infinitepay/transport.js';
 import {InfinitePayNotifications,notificationHints} from '../src/infrastructure/infinitepay/notifications.js';
+import {reconcileBankRefund} from '../src/application/refund-reconciliation.js';
 import {PaymentOperations} from '../src/application/payment-operations.js';
 
 const token = randomBytes(32).toString('base64url');
@@ -93,6 +94,80 @@ test('refund/cancel requests and public notices are append-only intentions, neve
   assert.equal((await api.inject({method:'GET',url:'/v1/operations',headers:{authorization:'Bearer '+token}})).statusCode,200);
   assert.equal((await api.inject({method:'POST',url:'/v1/payments/'+a.id+'/operations',headers:{authorization:'Bearer '+token,'idempotency-key':'invalid-fields-001'},payload:{...request,bankAccount:'forbidden'}})).statusCode,400);
  }finally{await api.close();}
+});
+
+test('bank reconciliation is immutable, bounded, idempotent and never creates a provider refund',async()=>{
+ const p={...principal(),permissions:['payments:read','payments:create','payments:check','payments:operations'] as const};
+ const repo=new PostgresCheckoutRepository(pool,'refund-merchant');
+ const connector={async createLink(i:{paymentId:string;expiresAt:string}){return {orderNsu:i.paymentId,checkoutUrl:'https://checkout.infinitepay.io/refund-merchant/one',expiresAt:i.expiresAt,exclusivePix:false as const,directQrAvailable:false as const};},async checkPayment(){throw Error('No provider call permitted');}};
+ const checkout=new CheckoutService(repo,connector,'ligado-test',true),original=input(),originalKey=randomUUID(),payment=(await checkout.create(p,original,originalKey)).payment,tx=randomUUID();
+ const refund={id:randomUUID(),paymentId:payment.id,transactionNsu:tx,providerRefundReference:randomUUID(),amountCents:500,occurredAt:new Date().toISOString(),evidenceSha256:'a'.repeat(64)};
+ await assert.rejects(reconcileBankRefund(pool,refund),{code:'REFUND_NOT_ALLOWED'});
+ await repo.applyObservation(payment,{orderNsu:payment.id,transactionNsu:tx,state:'PAID_PIX',amountCents:1500,paidAmountCents:1500});
+ assert.equal((await reconcileBankRefund(pool,refund)).moneyMoved,false);
+ assert.equal((await reconcileBankRefund(pool,refund)).idempotentReplay,true);
+ assert.equal((await checkout.get(p,payment.id)).refundedAmountCents,500);
+ await assert.rejects(reconcileBankRefund(pool,{...refund,amountCents:600}),{code:'IDEMPOTENCY_CONFLICT'});
+ await assert.rejects(reconcileBankRefund(pool,{...refund,id:randomUUID(),providerRefundReference:randomUUID(),transactionNsu:randomUUID()}),{code:'REFUND_NOT_ALLOWED'});
+ const more={...refund,id:randomUUID(),providerRefundReference:randomUUID(),amountCents:1000};
+ const raced=await Promise.allSettled([reconcileBankRefund(pool,more),reconcileBankRefund(pool,{...more,id:randomUUID(),providerRefundReference:randomUUID()})]);
+ assert.equal(raced.filter(r=>r.status==='fulfilled').length,1);
+ assert.equal((await checkout.get(p,payment.id)).refundedAmountCents,1500);
+ assert.equal((await checkout.create(p,original,originalKey)).payment.refundedAmountCents,1500);
+ await assert.rejects(pool.query('DELETE FROM bank_refund_reconciliations WHERE payment_id=$1',[payment.id]));
+ const operations=new PaymentOperations(pool,checkout);await operations.notice(p,payment.id,'REFUND_NOTICE');
+ const report=await operations.report(p,payment.id),op=report.requests[0].id;
+ await assert.rejects(operations.resolve({...p,permissions:['payments:read']},payment.id,op,'ACCOUNT_REVIEWED','b'.repeat(64)),{code:'OPERATION_NOT_ALLOWED'});
+ await operations.resolve(p,payment.id,op,'ACCOUNT_REVIEWED','b'.repeat(64));
+ assert.deepEqual((await operations.report(p,payment.id)).alerts[0].alerts,[]);
+ await assert.rejects(pool.query('DELETE FROM operation_resolutions WHERE operation_id=$1',[op]));
+});
+
+test('monitor aggregates alerts beyond the first hundred without crossing provider account',async()=>{
+ const p={...principal(),permissions:['payments:read','payments:create'] as const};
+ const repo=new PostgresCheckoutRepository(pool,'monitor-merchant');
+ const connector={async createLink(i:{paymentId:string;expiresAt:string}){return {orderNsu:i.paymentId,checkoutUrl:'https://checkout.infinitepay.io/monitor-merchant/one',expiresAt:i.expiresAt,exclusivePix:false as const,directQrAvailable:false as const};},async checkPayment(){throw Error();}};
+ const checkout=new CheckoutService(repo,connector,'ligado-test',true);
+ for(let i=0;i<103;i++){const payment=(await checkout.create(p,input(),randomUUID())).payment;await repo.applyObservation(payment,{orderNsu:payment.id,transactionNsu:randomUUID(),state:'REVIEW_REQUIRED',reason:'AMOUNT_MISMATCH'});}
+ const report=await new PaymentOperations(pool,checkout).report(p);
+ assert.equal(report.truncated,true);assert.equal(report.alerts.length,100);assert.equal(report.summary.total,103);assert.equal(report.summary.complete,true);
+ assert.ok(report.summary.codes.includes('FINANCIAL_REVIEW_REQUIRED'));
+ assert.equal((await new PaymentOperations(pool,new CheckoutService(new PostgresCheckoutRepository(pool,'other-account'),connector,'ligado-test')).report(p)).summary.total,0);
+});
+
+test('authenticated proxy isolates source quotas and private reads do not exhaust creation capacity',async()=>{
+ const p={...principal(),permissions:['payments:read','payments:create','payments:check'] as const,requestsPerMinute:1,readRequestsPerMinute:200};
+ const repo=new PostgresCheckoutRepository(pool,'proxy-merchant');
+ const connector={async createLink(i:{paymentId:string;expiresAt:string}){return {orderNsu:i.paymentId,checkoutUrl:'https://checkout.infinitepay.io/proxy-merchant/one',expiresAt:i.expiresAt,exclusivePix:false as const,directQrAvailable:false as const};},async checkPayment(){throw Error();}};
+ const checkout=new CheckoutService(repo,connector,'ligado-test',true),notifications=new InfinitePayNotifications(pool,checkout,p),key=randomBytes(32).toString('base64url');
+ const api=createServer(repo,new SimulatedProvider(),[{...p,keyHash:createHash('sha256').update(token).digest('hex')}],checkout,notifications,undefined,key);
+ const payload={},signed=(source:string)=>{const time=String(Date.now());return {'x-lp-time':time,'x-lp-source':source,'x-lp-signature':createHmac('sha256',key).update(['POST','/webhooks/infinitepay',time,source,createHash('sha256').update(JSON.stringify(payload)).digest('hex')].join('\n')).digest('hex')};};
+ try{
+  assert.equal((await api.inject({method:'POST',url:'/webhooks/infinitepay',payload})).statusCode,403);
+  for(let i=0;i<120;i++)assert.equal((await api.inject({method:'POST',url:'/webhooks/infinitepay',payload,headers:signed('198.51.100.1')})).statusCode,400);
+  assert.equal((await api.inject({method:'POST',url:'/webhooks/infinitepay',payload,headers:signed('198.51.100.1')})).statusCode,429);
+  assert.equal((await api.inject({method:'POST',url:'/webhooks/infinitepay',payload,headers:signed('198.51.100.2')})).statusCode,400);
+  for(let i=0;i<130;i++)assert.equal((await api.inject({method:'GET',url:'/health/ready',headers:{authorization:'Bearer '+token}})).statusCode,200);
+  assert.equal((await api.inject({method:'POST',url:'/v1/payments',headers:{authorization:'Bearer '+token,'idempotency-key':randomUUID()},payload:input()})).statusCode,201);
+  assert.equal((await api.inject({method:'POST',url:'/v1/payments',headers:{authorization:'Bearer '+token,'idempotency-key':randomUUID()},payload:input()})).statusCode,429);
+ }finally{await api.close();}
+});
+
+test('a fully leased queue rejects acknowledgement and eviction fences expired workers',async()=>{
+ const p={...principal(),permissions:['payments:read','payments:create','payments:check'] as const};
+ const repo=new PostgresCheckoutRepository(pool,'lease-merchant');
+ const connector={async createLink(i:{paymentId:string;expiresAt:string}){return {orderNsu:i.paymentId,checkoutUrl:'https://checkout.infinitepay.io/lease-merchant/one',expiresAt:i.expiresAt,exclusivePix:false as const,directQrAvailable:false as const};},async checkPayment(){throw Error('No provider call allowed');}};
+ const checkout=new CheckoutService(repo,connector,'ligado-test',true),payment=(await checkout.create(p,input(),randomUUID())).payment;
+ const worker=new InfinitePayNotifications(pool,checkout,p);
+ for(let i=0;i<4;i++)await worker.enqueue({orderNsu:payment.id,transactionNsu:randomUUID(),slug:'one'});
+ const lease=randomUUID();await pool.query("UPDATE checkout_notifications SET lease_token=$2,lease_until=now()+interval '1 minute' WHERE payment_id=$1",[payment.id,lease]);
+ await assert.rejects(worker.enqueue({orderNsu:payment.id,transactionNsu:randomUUID(),slug:'one'}),{code:'NOTIFICATION_RETRY_LATER'});
+ await pool.query("UPDATE checkout_notifications SET lease_until=now()-interval '1 second' WHERE payment_id=$1",[payment.id]);
+ await worker.enqueue({orderNsu:payment.id,transactionNsu:randomUUID(),slug:'one'});
+ const evicted=(await pool.query("SELECT id,lease_token FROM checkout_notifications WHERE payment_id=$1 AND state='FAILED'",[payment.id])).rows[0];
+ assert.ok(evicted);assert.equal(evicted.lease_token,null);
+ const stale=await pool.query("UPDATE checkout_notifications SET state='PENDING' WHERE id=$1 AND lease_token=$2",[evicted.id,lease]);assert.equal(stale.rowCount,0);
+ assert.equal((await checkout.get(p,payment.id)).state,'PENDING');
 });
 
 test('public notifications persist before acknowledgement and only authenticated provider verification settles',async()=>{
@@ -364,7 +439,7 @@ test('checkout disabled creation persists nothing and timeout is durable without
 test('confirmed checkout writes settlement and event atomically and does not settle two orders with one transaction', async () => {
   const f = checkoutFixture(), first = await f.service.create(f.p, input(), 'checkout-paid-001');
   const transaction = randomUUID();
-  const hints = { orderNsu: first.payment.id, transactionNsu: transaction, slug: 'fixture' };
+  const hints = { orderNsu: first.payment.id, transactionNsu: transaction, slug: first.payment.id };
   const responses = await Promise.all(Array.from({ length: 8 }, () => f.service.check(f.p, first.payment.id, hints)));
   assert.ok(responses.every(payment => payment.state === 'PAID_PIX'));
   const events = await pool.query("SELECT 1 FROM payment_events WHERE payment_id=$1 AND event_type='PAID_PIX'", [first.payment.id]);
@@ -372,7 +447,7 @@ test('confirmed checkout writes settlement and event atomically and does not set
   const settlement = await pool.query('SELECT 1 FROM provider_settlements WHERE payment_id=$1', [first.payment.id]);
   assert.equal(settlement.rowCount, 1);
   const second = await f.service.create(f.p, input(), 'checkout-paid-002');
-  await assert.rejects(f.service.check(f.p, second.payment.id, { ...hints, orderNsu: second.payment.id }), { code: 'TRANSACTION_ALREADY_USED' });
+  await assert.rejects(f.service.check(f.p, second.payment.id, { ...hints, orderNsu: second.payment.id, slug: second.payment.id }), { code: 'TRANSACTION_ALREADY_USED' });
   assert.equal((await f.service.get(f.p, second.payment.id)).state, 'PENDING');
   assert.equal(f.creates(), 2);
 });
@@ -381,7 +456,7 @@ test('checkout cannot confirm from wrong order, read-only identity or mismatched
   const f = checkoutFixture({ checkResult: { success: true, paid: true, amount: 1500,
     paid_amount: 1499, capture_method: 'pix', installments: 1 } });
   const created = await f.service.create(f.p, input(), 'checkout-review-001');
-  const hints = { orderNsu: created.payment.id, transactionNsu: randomUUID(), slug: 'fixture' };
+  const hints = { orderNsu: created.payment.id, transactionNsu: randomUUID(), slug: created.payment.id };
   await assert.rejects(f.service.check({ ...f.p, permissions: ['payments:read'] }, created.payment.id, hints), { code: 'OPERATION_NOT_ALLOWED' });
   await assert.rejects(f.service.check(f.p, created.payment.id, { ...hints, orderNsu: randomUUID() }), { code: 'INVALID_CHECKOUT_HINTS' });
   assert.equal(f.checks(), 0);
@@ -395,7 +470,7 @@ test('checkout cannot confirm from wrong order, read-only identity or mismatched
 
 test('checkout confirmation rollback preserves unpaid state and transaction is available for verified retry', async () => {
   const f = checkoutFixture(), created = await f.service.create(f.p, input(), 'checkout-rollback-001');
-  const hints = { orderNsu: created.payment.id, transactionNsu: randomUUID(), slug: 'fixture' };
+  const hints = { orderNsu: created.payment.id, transactionNsu: randomUUID(), slug: created.payment.id };
   await pool.query('ALTER TABLE outbox ADD CONSTRAINT test_checkout_failure CHECK (false) NOT VALID');
   try {
     await assert.rejects(f.service.check(f.p, created.payment.id, hints));
@@ -415,7 +490,7 @@ test('HTTP checkout flow requires dedicated permission, ignores no fields and ex
   assert.equal(response.statusCode, 201);
   const result = response.json<{ id: string; provider: string; simulated: boolean; environment: string }>();
   assert.equal(result.provider, 'infinitepay'); assert.equal(result.simulated, false); assert.equal(result.environment, 'production');
-  const hints = { orderNsu: result.id, transactionNsu: randomUUID(), slug: 'fixture' };
+  const hints = { orderNsu: result.id, transactionNsu: randomUUID(), slug: result.id };
   const bad = await api.inject({ method: 'POST', url: `/v1/payments/${result.id}/check`, headers,
     payload: { ...hints, paid: true, amountCents: 1 } });
   assert.equal(bad.statusCode, 400); assert.equal(f.checks(), 0);

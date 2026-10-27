@@ -1,0 +1,36 @@
+{
+  "at": "2026-10-27T03:20:37.389Z",
+  "realProviderRequests": 0,
+  "operationalDatabaseUsed": false,
+  "observations": {
+    "invoiceBinding": {
+      "differentSlugRejected": true,
+      "noProviderCallForMismatchedSlug": true
+    },
+    "objectIsolation": {
+      "otherApplicationDenied": true,
+      "otherReceiverDenied": true
+    },
+    "queuePoisoning": {
+      "hundredHintsCannotPermanentlyBlock": true,
+      "operatorRetryAccepted": true,
+      "boundedHistory": true,
+      "paymentNotFalselyApproved": true
+    },
+    "sharedWebhookRateLimit": {
+      "authenticatedSourceIsolation": true,
+      "unsignedHeaderRejected": true,
+      "noLiveHttpFlood": true
+    },
+    "refundNotice": {
+      "unverifiedNoticeCannotChangeFinancialState": true,
+      "automaticVerifiedRefundAccountingImplemented": false
+    },
+    "monitorTruncation": {
+      "record101NeedsReview": true,
+      "reportComplete": true,
+      "monitorReturnedReviewAlert": true
+    }
+  },
+  "syntheticProviderChecks": 0
+}

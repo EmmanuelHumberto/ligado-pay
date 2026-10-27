@@ -4,6 +4,7 @@ import type { PaymentRepository } from './ports.js';
 import type { CheckoutConnector, CheckoutHints, CheckoutLink, CheckoutObservation } from './checkout-connector.js';
 
 export interface CheckoutRepository extends PaymentRepository {
+  readonly operationalAccount?: string;
   finishCheckout(id: string, result: CheckoutLink | null): Promise<Payment>;
   applyObservation(payment: Payment, observation: CheckoutObservation): Promise<Payment>;
 }
@@ -11,6 +12,8 @@ export interface CheckoutRepository extends PaymentRepository {
 export class CheckoutService {
   constructor(private readonly repository: CheckoutRepository, private readonly connector: CheckoutConnector,
     private readonly receiverId: string, readonly creationEnabled = false) {}
+
+  get operationalAccount() { return this.repository.operationalAccount; }
 
   async create(principal: Principal, input: CreatePayment, key: string) {
     if (!principal.permissions.includes('payments:create') || !principal.receiverIds.includes(input.receiverId) ||
@@ -20,7 +23,11 @@ export class CheckoutService {
     }
     if (!this.creationEnabled) throw new PaymentError(503, 'LIVE_CREATION_DISABLED');
     const reserved = await this.repository.reserve(principal, input, key);
-    if (!reserved.created) return reserved;
+    if (!reserved.created) {
+      const payment=await this.repository.find(principal,reserved.payment.id);
+      if(!payment)throw new PaymentError(404,'PAYMENT_NOT_FOUND');
+      return {payment,created:false};
+    }
     let link: CheckoutLink;
     try { link = await this.connector.createLink(this.intent(reserved.payment)); }
     catch { return { payment: await this.repository.finishCheckout(reserved.payment.id, null), created: true }; }
@@ -46,12 +53,19 @@ export class CheckoutService {
     if (!principal.permissions.includes('payments:check')) throw new PaymentError(403, 'OPERATION_NOT_ALLOWED');
     const payment = await this.get(principal, id);
     if (hints.orderNsu !== payment.id) throw new PaymentError(400, 'INVALID_CHECKOUT_HINTS');
+    this.validateInvoice(payment, hints);
     if (payment.state === 'PAID_PIX') return payment;
     const observation = await this.connector.checkPayment(this.intent(payment), hints);
     if (observation.orderNsu !== payment.id || observation.transactionNsu !== hints.transactionNsu) {
       throw new PaymentError(409, 'PROVIDER_REFERENCE_MISMATCH');
     }
     return this.repository.applyObservation(payment, observation);
+  }
+
+  validateInvoice(payment: Payment, hints: CheckoutHints) {
+    if (payment.checkout?.url && new URL(payment.checkout.url).pathname.split('/').at(-1) !== hints.slug) {
+      throw new PaymentError(400, 'INVALID_CHECKOUT_HINTS');
+    }
   }
 
   private intent(payment: Payment) {

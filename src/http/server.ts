@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import {notificationSource} from './notification-proxy.js';
 import type { Principal, CreatePayment } from '../domain/payment.js';
 import { PaymentError } from '../domain/payment.js';
 import type { Credential } from '../config.js';
@@ -16,7 +17,7 @@ declare module 'fastify' { interface FastifyRequest { principal: Principal | nul
 const uuid = { type: 'string', pattern: '^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$' };
 
 export function createServer(repository: PaymentRepository, provider: PaymentProvider, credentials: Credential[], checkout?: CheckoutService,
-  notifications?:InfinitePayNotifications,operations?:PaymentOperations) {
+  notifications?:InfinitePayNotifications,operations?:PaymentOperations,notificationProxyKey?:string) {
   const api = Fastify({ logger: false, trustProxy: false, bodyLimit: 4096,
     requestTimeout: 10_000, connectionTimeout: 10_000, keepAliveTimeout: 5000,
     maxRequestsPerSocket: 100, ajv: { customOptions: { removeAdditional: false, coerceTypes: false, useDefaults: false } } });
@@ -31,13 +32,24 @@ export function createServer(repository: PaymentRepository, provider: PaymentPro
       'x-frame-options': 'DENY', 'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
       'referrer-policy': 'no-referrer' });
     const isNotification=notifications&&request.method==='POST'&&request.routeOptions.url===notificationPath;
-    if (!(isNotification?notificationIngress:ingress).allow(request.ip)) throw new PaymentError(429, 'RATE_LIMITED');
+    if(isNotification&&!notificationProxyKey&&!notificationIngress.allow(request.ip))throw new PaymentError(429,'RATE_LIMITED');
     if (request.headers.origin || request.headers['sec-fetch-site']) throw new PaymentError(403, 'SERVER_CLIENT_REQUIRED');
     if (request.routeOptions.url === '/health/live') return;
     if(notifications&&request.method==='POST'&&request.routeOptions.url===notificationPath)return;
     request.principal = authenticate(request.headers.authorization, credentials);
-    if (!request.principal) throw new PaymentError(401, 'UNAUTHORIZED');
-    if (!await repository.consumeRequest(request.principal)) throw new PaymentError(429, 'RATE_LIMITED');
+    if (!request.principal) {
+      if(!ingress.allow(request.ip))throw new PaymentError(429,'RATE_LIMITED');
+      throw new PaymentError(401, 'UNAUTHORIZED');
+    }
+    const operation=request.method==='GET'?'read':request.routeOptions.url?.endsWith('/check')?'check':
+      request.routeOptions.url==='/v1/payments'?'create':'operations';
+    if (!await repository.consumeRequest(request.principal,operation)) throw new PaymentError(429, 'RATE_LIMITED');
+  });
+  api.addHook('preHandler',async request=>{
+    if(notifications&&notificationProxyKey&&request.method==='POST'&&request.routeOptions.url===notificationPath){
+      const source=notificationSource(request.headers,request.body,notificationProxyKey);
+      if(!notificationIngress.allow(source))throw new PaymentError(429,'RATE_LIMITED');
+    }
   });
   api.setErrorHandler((error, _request, reply) => {
     if (error instanceof PaymentError) return reply.code(error.status).send({ error: error.code });
@@ -101,12 +113,21 @@ export function createServer(repository: PaymentRepository, provider: PaymentPro
     if(request.params.id!==request.body.orderNsu)throw new PaymentError(400,'INVALID_CHECKOUT_HINTS');
     if(!request.principal!.permissions.includes('payments:check'))throw new PaymentError(403,'OPERATION_NOT_ALLOWED');
     await checkout.get(request.principal!,request.params.id);
-    if(notifications)await notifications.enqueue(request.body);
-    return { ...await checkout.check(request.principal!, request.params.id, request.body), ...metadata };
+    try{return { ...await checkout.check(request.principal!, request.params.id, request.body), ...metadata };}
+    catch(error){
+      if(error instanceof CheckoutError&&error.code==='PROVIDER_UNAVAILABLE')await notifications?.enqueue(request.body,true);
+      throw error;
+    }
   });
   if(operations){
     const params={type:'object',additionalProperties:false,required:['id'],properties:{id:uuid}};
     const headers={type:'object',required:['idempotency-key'],properties:{'idempotency-key':idempotencyKey}};
+    api.post<{Params:{id:string;operationId:string};Body:{reasonCode:string;evidenceSha256:string}}>(
+      '/v1/payments/:id/operations/:operationId/resolve', {schema:{
+        params:{type:'object',additionalProperties:false,required:['id','operationId'],properties:{id:uuid,operationId:uuid}},
+        body:{type:'object',additionalProperties:false,required:['reasonCode','evidenceSha256'],properties:{
+          reasonCode:{type:'string',pattern:'^[A-Z_]{3,64}$'},evidenceSha256:{type:'string',pattern:'^[a-f0-9]{64}$'}}}}},
+      async request=>operations.resolve(request.principal!,request.params.id,request.params.operationId,request.body.reasonCode,request.body.evidenceSha256));
     api.get('/v1/operations',async request=>operations.report(request.principal!));
     api.get<{Params:{id:string}}>('/v1/payments/:id/operations',{schema:{params}},async request=>operations.report(request.principal!,request.params.id));
     api.post<{Params:{id:string};Body:OperationInput;Headers:{'idempotency-key':string}}>('/v1/payments/:id/operations',{

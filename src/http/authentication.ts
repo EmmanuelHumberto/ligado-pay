@@ -13,6 +13,8 @@ export function authenticate(header: string | undefined, credentials: readonly C
   // Never attach the credential hash to the request or response.
   return { applicationId: found.applicationId, receiverIds: found.receiverIds, permissions: found.permissions,
     maxAmountCents: found.maxAmountCents, requestsPerMinute: found.requestsPerMinute,
+    ...(found.readRequestsPerMinute===undefined?{}:{readRequestsPerMinute:found.readRequestsPerMinute}),
+    ...(found.checkRequestsPerMinute===undefined?{}:{checkRequestsPerMinute:found.checkRequestsPerMinute}),
     ...(found.maxPayments === undefined ? {} : {maxPayments: found.maxPayments}) };
 }
 

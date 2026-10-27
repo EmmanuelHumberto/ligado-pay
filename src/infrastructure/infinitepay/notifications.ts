@@ -5,6 +5,7 @@ import {PaymentError} from '../../domain/payment.js';
 import type {CheckoutService} from '../../application/checkout-service.js';
 import type {CheckoutHints} from '../../application/checkout-connector.js';
 import type {PaymentOperations} from '../../application/payment-operations.js';
+import {queueNotification} from '../notification-queue.js';
 
 export const notificationPath='/webhooks/infinitepay';
 const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
@@ -31,25 +32,18 @@ export class InfinitePayNotifications {
       principal.receiverIds.length!==1)throw new Error('Notification identity must be explicitly scoped.');
   }
 
-  async enqueue(hints:CheckoutHints) {
+  async enqueue(hints:CheckoutHints,trusted=false) {
     let payment;
     try{payment=await this.service.get(this.principal,hints.orderNsu);}
     catch(error){if(error instanceof PaymentError&&error.code==='PAYMENT_NOT_FOUND')return;throw error;}
     if(payment.state==='PAID_PIX'||payment.state==='REVIEW_REQUIRED')return;
+    this.service.validateInvoice(payment,hints);
     const db=await this.pool.connect();
     try{
       await db.query('BEGIN');
       await db.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',['notification:'+payment.id]);
-      const duplicate=await db.query(`SELECT 1 FROM checkout_notifications
-        WHERE payment_id=$1 AND transaction_nsu=$2 AND invoice_slug=$3`,[payment.id,hints.transactionNsu,hints.slug]);
-      if(!duplicate.rowCount){
-        const total=await db.query<{n:number}>('SELECT count(*)::int n FROM checkout_notifications WHERE payment_id=$1',[payment.id]);
-        if(total.rows[0]!.n>=64)throw new PaymentError(429,'NOTIFICATION_QUEUE_LIMIT');
-        const pending=await db.query<{n:number}>("SELECT count(*)::int n FROM checkout_notifications WHERE payment_id=$1 AND state='PENDING'",[payment.id]);
-        if(pending.rows[0]!.n>=8)throw new PaymentError(429,'NOTIFICATION_QUEUE_LIMIT');
-        await db.query(`INSERT INTO checkout_notifications(id,payment_id,transaction_nsu,invoice_slug)
-          VALUES($1,$2,$3,$4)`,[randomUUID(),payment.id,hints.transactionNsu,hints.slug]);
-      }
+      const queued=await queueNotification(db,payment.id,hints,trusted);
+      if(!queued)throw new PaymentError(503,'NOTIFICATION_RETRY_LATER');
       await db.query('COMMIT');
     }catch(error){await db.query('ROLLBACK').catch(()=>undefined);throw error;}finally{db.release();}
   }
@@ -60,18 +54,18 @@ export class InfinitePayNotifications {
   async tick() {
     await this.pool.query(`UPDATE checkout_notifications n SET state='FAILED',lease_token=NULL,lease_until=NULL
       FROM payments p WHERE p.id=n.payment_id AND p.application_id=$1 AND p.receiver_id=$2
-        AND n.state='PENDING' AND n.attempts>=8 AND (n.lease_until IS NULL OR n.lease_until<clock_timestamp())`,
-    [this.principal.applicationId,this.principal.receiverIds[0]]);
+        AND p.provider_account=$3 AND n.state='PENDING' AND n.attempts>=8 AND (n.lease_until IS NULL OR n.lease_until<clock_timestamp())`,
+    [this.principal.applicationId,this.principal.receiverIds[0],this.service.operationalAccount]);
     const lease=randomUUID();
     const selected=await this.pool.query<{id:string;payment_id:string;transaction_nsu:string;invoice_slug:string;attempts:number}>(`
       WITH due AS (SELECT n.id FROM checkout_notifications n JOIN payments p ON p.id=n.payment_id
         WHERE n.state='PENDING' AND n.attempts<8 AND n.next_check_at<=clock_timestamp()
           AND (n.lease_until IS NULL OR n.lease_until<clock_timestamp())
-          AND p.application_id=$1 AND p.receiver_id=$2 AND p.provider='infinitepay' AND p.environment='production'
-        ORDER BY n.next_check_at,n.id FOR UPDATE OF n SKIP LOCKED LIMIT 1)
-      UPDATE checkout_notifications n SET lease_token=$3,lease_until=clock_timestamp()+interval '30 seconds',
+          AND p.application_id=$1 AND p.receiver_id=$2 AND p.provider_account=$3 AND p.provider='infinitepay' AND p.environment='production'
+        ORDER BY n.trusted DESC,n.next_check_at,n.id FOR UPDATE OF n SKIP LOCKED LIMIT 1)
+      UPDATE checkout_notifications n SET lease_token=$4,lease_until=clock_timestamp()+interval '30 seconds',
         attempts=attempts+1 FROM due WHERE n.id=due.id RETURNING n.*`,
-    [this.principal.applicationId,this.principal.receiverIds[0],lease]);
+    [this.principal.applicationId,this.principal.receiverIds[0],this.service.operationalAccount,lease]);
     const job=selected.rows[0];if(!job)return;
     let done=false;
     try{

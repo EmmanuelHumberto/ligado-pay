@@ -60,6 +60,11 @@
             "type": "integer",
             "minimum": 1
           },
+          "refundedAmountCents": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Total reconciled offline by privileged operator after account review; original settlement remains immutable."
+          },
           "currency": {
             "const": "BRL"
           },
@@ -151,6 +156,88 @@
     }
   },
   "paths": {
+    "/v1/payments/{id}/operations/{operationId}/resolve": {
+      "post": {
+        "description": "Append-only closure of reviewed operational notice; never changes financial state.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "path",
+            "name": "operationId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "reasonCode",
+                  "evidenceSha256"
+                ],
+                "properties": {
+                  "reasonCode": {
+                    "type": "string",
+                    "pattern": "^[A-Z_]{3,64}$"
+                  },
+                  "evidenceSha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operational review recorded; financial state unchanged"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "413": {
+            "$ref": "#/components/responses/Error"
+          },
+          "415": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
     "/v1/operations": {
       "get": {
         "description": "Read-only, application/receiver/account scoped operational alerts. Never moves money or automatically expires a financial intent.",

@@ -5,7 +5,7 @@ export interface PaymentRepository {
   find(principal: Principal, id: string): Promise<Payment | null>;
   findByReference(principal: Principal, receiverId: string, externalReference: string): Promise<Payment | null>;
   finish(id: string, state: 'PENDING' | 'UNCERTAIN', providerReference: string | null): Promise<Payment>;
-  consumeRequest(principal: Principal): Promise<boolean>;
+  consumeRequest(principal: Principal, operation?: 'read'|'create'|'check'|'operations'): Promise<boolean>;
   ready(): Promise<void>;
 }
 export interface PaymentProvider {

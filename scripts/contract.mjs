@@ -5,7 +5,7 @@ const payment = { type: 'object', required: ['id','applicationId','receiverId','
   properties: {
     id: { type: 'string', format: 'uuid' }, applicationId: { type: 'string' }, receiverId: { type: 'string' },
     environment: { enum: ['sandbox','production'] }, externalReference: { type: 'string' },
-    amountCents: { type: 'integer', minimum: 1 }, currency: { const: 'BRL' },
+    amountCents: { type: 'integer', minimum: 1 }, refundedAmountCents:{type:'integer',minimum:0,description:'Total reconciled offline by privileged operator after account review; original settlement remains immutable.'}, currency: { const: 'BRL' },
     state: { enum: ['PROCESSING','PENDING','UNCERTAIN','PAID_PIX','REVIEW_REQUIRED'] }, providerReference: { type: ['string','null'] },
     createdAt: { type: 'string', format: 'date-time' }, provider: { enum: ['simulated','infinitepay'] },
     simulated: { type: 'boolean' }, realPaymentsEnabled: { type: 'boolean' },
@@ -26,6 +26,9 @@ const document = { openapi: '3.1.0', info: { title: 'Ligado Pay local API', vers
   security: [{ serviceToken: [] }], components: { schemas: { Payment: payment }, responses: { Error: errorResponse }, securitySchemes: {
     serviceToken: { type: 'http', scheme: 'bearer', description: 'Local 256-bit service token. Never embed in browser/app.' },
   } }, paths: {
+    '/v1/payments/{id}/operations/{operationId}/resolve':{post:{description:'Append-only closure of reviewed operational notice; never changes financial state.',
+      parameters:[{in:'path',name:'id',required:true,schema:{type:'string',format:'uuid'}},{in:'path',name:'operationId',required:true,schema:{type:'string',format:'uuid'}}],
+      requestBody:{required:true,content:{'application/json':{schema:{type:'object',additionalProperties:false,required:['reasonCode','evidenceSha256'],properties:{reasonCode:{type:'string',pattern:'^[A-Z_]{3,64}$'},evidenceSha256:{type:'string',pattern:'^[a-f0-9]{64}$'}}}}}},responses:{200:{description:'Operational review recorded; financial state unchanged'},...errors}}},
     '/v1/operations':{get:{description:'Read-only, application/receiver/account scoped operational alerts. Never moves money or automatically expires a financial intent.',responses:{200:{description:'Bounded operational alert report and unsupported provider capabilities'},...errors}}},
     '/v1/payments/{id}/operations':{
       get:{parameters:[{in:'path',name:'id',required:true,schema:{type:'string',format:'uuid'}}],responses:{200:{description:'Scoped audit records and operational alerts'},...errors}},

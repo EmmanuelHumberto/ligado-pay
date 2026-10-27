@@ -1,3 +1,18 @@
+# Estado de retomada atualizado — 27/10/2026
+
+Estado consolidado em 27/10/2026. Este registro substitui as indicações antigas de migração inativa, gateway original ou PAY-07 sem isolamento aplicado. Relatos anteriores são histórico de execução.
+
+- Ler primeiro `CORRECOES_AUDITORIA_2026-10-27.md`: isolamento Windows ativo; tarefas API/Web/Gateway Running; backup e restauração isolada passaram. API/Web usam LigadoSystemOS e gateway LigadoPayGateway.
+- Migrações 005/006/007, fila limitada/prioritária, proxy HMAC, monitor completo e conciliação privilegiada de devoluções implementados. Devolução/cancelamento do dinheiro só na conta InfinitePay. Não repetir testes reais já pagos.
+- Publicação API/Web e2866253-0d5c-48bc-8311-6492f6127b8a; homologação HTTP pausada. Falta fluxo administrativo para novas releases isoladas; antigo publicador bloqueado.
+- Novo backup cifrado: ecosistema/backups/systemos-ligado-pay-restaurado-2026-10-27-043343.enc; recuperação verificada e chave separada. Upload manual pendente.
+- APK c98de334 compilado/testado, instalação pendente. Miniaturas/cache de documentos locais do SystemOS ainda não publicados.
+- Esta rodada registra commits locais nos três repositórios; não representa push, nova publicação, instalação do app ou operação bancária.
+
+---
+
+## Histórico anterior (consulte o estado atualizado acima)
+
 # Retomada — Ligado Pay
 
 Atualizado em 26/10/2026. Registro para continuar o trabalho sem repetir operações financeiras já realizadas.
@@ -311,3 +326,23 @@ Migration 004_payment_operations aplicada ao banco exclusivo com snapshot anteri
 Recuperação manual idempotente da fila esgotada com dados do checkout; não cria nova cobrança. Reporta criação incerta, falta de correlação, fila esgotada, conferência e link vencido. Expiração não cancela nem libera nova cobrança; SystemOS oculta URL vencida mantendo a tentativa. Monitor operacional existente lê o gateway e registra códigos sem dados financeiros pessoais. Avisos refunded/canceled não comprovam devolução. Links anteriores não são alterados retroativamente.
 
 Validação: 30 testes unitários do gateway, 21 integrados PostgreSQL, teste do monitor, integração HTTP entre repositórios e 25 cenários legados aprovados. Consulta indevida à confirmação recusada antes de enfileirar pistas; webhook de devolução/cancelamento não altera estado financeiro. Nenhum pagamento/devolução executado pelo agente. APK anterior permanece compatível; nenhuma compilação/instalação Android necessária nesta etapa de servidor.
+
+
+## Correções da auditoria — 27/10/2026 UTC
+
+Ler `CORRECOES_AUDITORIA_2026-10-27.md` e a seção atualizada de `operacao-pix.md`. Migrações 005/006/007 aplicadas; role runtime não insere conciliação de devolução. Proxy HMAC publicado no Next e exigido no gateway; chave independente protegida fora dos repositórios. Configuração local selecionada mantém emissão e identidade financeira existentes, sem limite vitalício novo. Nenhuma operação financeira real nesta rodada.
+
+Ainda falta PAY-07: migração dos processos para identidades Windows distintas; sessão atual não elevada. Plano em SystemOS/docs/ISOLAMENTO_RUNTIME_WINDOWS.md e evidência em SystemOS/evidencias/isolamento-pagamentos-windows.json. Não declarar concluído. O APK de pagamentos foi gerado e passou 132 testes/lint; Moto G24 ausente no ADB, portanto não foi instalado.
+
+Há mudanças locais anteriores de portal/login/documentos preservadas. Esta rodada não fez commit nem push. Não repetir testes reais já pagos.
+
+
+### Estado exato ao encerrar esta rodada
+
+- Publicação web/API saudável: e2866253-0d5c-48bc-8311-6492f6127b8a. Gateway original retomado; proxy sintético 200 e JSON comprimido rejeitado com 415.
+- Gateway: 31 unitários + 25 de integração; SystemOS: 223 unitários + 29 de integração, cinco skips no unitário; Android: 132/lint zero. APK c98de334... disponível e não instalado.
+- Arquivo para cópia manual: ecosistema/backups/systemos-ligado-pay-seguranca-1793067077880.enc. Restauração dos dois bancos, decifragem/extração e 173 hashes conferidos; ferramentas de recuperação atualizadas, chave existente preservada. Nenhum upload.
+- PAY-07 aberto: tentativas administrativas criaram LigadoSystemOS e LigadoPayGateway, mas a partida das tarefas falhou. Ambas as contas e as tarefas Ligado Runtime API/Web/Gateway estão DESATIVADAS. Nenhum active.json está ativo; produção permanece no contexto original. Não confundir testes preliminares de ACL com isolamento aplicado.
+- O teste administrativo em portas separadas foi bloqueado pela revisão automática ("blocked by policy"); não contornar a rejeição com outro método. Diagnóstico somente de leitura foi permitido e executado. Node não criou stderr/stdout sob as tarefas. Lançador atualizado no repositório define PSModulePath antes de carregar cmdlets e passou em teste sintético WinPS5; teste sob conta dedicada permanece pendente. Protótipo -Install foi bloqueado para evitar repetição da troca sem validação.
+- Scripts experimentais de reparo/recriação foram retirados; preservar evidências privadas .runtime/runtime-isolation-result.json e isolation-readonly-diagnostic.json para diagnóstico. Diretórios protegidos em ProgramData e perfis das tentativas não foram apagados.
+- Contêiner de teste os-ligado-homologacao-postgres-1 voltou a parado. Contêineres operacionais preservados. Nenhum commit/push nesta rodada.

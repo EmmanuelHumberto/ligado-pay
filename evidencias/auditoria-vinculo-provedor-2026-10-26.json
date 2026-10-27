@@ -1,0 +1,40 @@
+{
+  "at": "2026-10-27T01:04:44.022Z",
+  "operation": "payment_check only",
+  "newCharges": 0,
+  "refunds": 0,
+  "localFinancialWrites": 0,
+  "accountIdentifiersRedacted": true,
+  "cases": [
+    {
+      "variant": "baseline",
+      "success": true,
+      "paid": true,
+      "echoesOrder": false,
+      "echoesTransaction": false,
+      "echoesInvoice": false
+    },
+    {
+      "variant": "different-order",
+      "success": true,
+      "paid": false,
+      "echoesOrder": false,
+      "echoesTransaction": false,
+      "echoesInvoice": false
+    },
+    {
+      "variant": "different-invoice",
+      "success": false,
+      "paid": false,
+      "echoesOrder": false,
+      "echoesTransaction": false,
+      "echoesInvoice": false
+    },
+    {
+      "variant": "different-existing-order",
+      "sameAmount": true,
+      "success": true,
+      "paid": false
+    }
+  ]
+}

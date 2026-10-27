@@ -9,7 +9,7 @@ export interface Config {
   credentials: Credential[];
   provider: 'simulated' | 'infinitepay';
   infinitepay?: { receiverId: string; handle: string; redirectUrl: string; apiKeyFile: string; liveCreationEnabled: boolean;
-    webhookUrl?:string; webhookApplicationId?:string };
+    webhookUrl?:string; webhookApplicationId?:string; notificationProxyKeyFile?:string };
 }
 const identifier = /^[a-z][a-z0-9_-]{2,63}$/;
 const integer = (value: unknown, min: number, max: number): value is number =>
@@ -44,9 +44,12 @@ export function parseConfig(value: unknown, nodeEnv: string | undefined): Config
         hashes.has(c['keyHash']) || applications.has(c['applicationId'])) return fail();
     hashes.add(c['keyHash']); applications.add(c['applicationId']);
     if (c['maxPayments'] !== undefined && !integer(c['maxPayments'], 1, 100000)) return fail();
+    for(const field of ['readRequestsPerMinute','checkRequestsPerMinute'])if(c[field]!==undefined&&!integer(c[field],1,10000))return fail();
     credentials.push({ applicationId: c['applicationId'], keyHash: c['keyHash'],
       receiverIds: [...c['receiverIds']] as string[], permissions: [...c['permissions']] as Credential['permissions'],
       maxAmountCents: c['maxAmountCents'], requestsPerMinute: c['requestsPerMinute'],
+      ...(c['readRequestsPerMinute']===undefined?{}:{readRequestsPerMinute:c['readRequestsPerMinute'] as number}),
+      ...(c['checkRequestsPerMinute']===undefined?{}:{checkRequestsPerMinute:c['checkRequestsPerMinute'] as number}),
       ...(c['maxPayments'] === undefined ? {} : {maxPayments: c['maxPayments'] as number}) });
   }
   const result: Config = { databaseUrl: raw['databaseUrl'], port: raw['port'], credentials,
@@ -60,6 +63,10 @@ export function parseConfig(value: unknown, nodeEnv: string | undefined): Config
         !credentials.every(credential => credential.receiverIds.every(id => id === c['receiverId']))) return fail();
     result.infinitepay = { receiverId: c['receiverId'], handle: c['handle'], redirectUrl: c['redirectUrl'],
       apiKeyFile: c['apiKeyFile'], liveCreationEnabled: c['liveCreationEnabled'] };
+    if(c['notificationProxyKeyFile']!==undefined){
+      if(typeof c['notificationProxyKeyFile']!=='string'||!isAbsolute(c['notificationProxyKeyFile']))return fail();
+      result.infinitepay.notificationProxyKeyFile=c['notificationProxyKeyFile'];
+    }
     if(c['webhookUrl']!==undefined||c['webhookApplicationId']!==undefined){
       if(typeof c['webhookUrl']!=='string'||typeof c['webhookApplicationId']!=='string')return fail();
       let hook:URL,redirect:URL;

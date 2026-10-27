@@ -27,3 +27,31 @@ Entrada de `request`: `kind` (`REFUND_REQUEST`, `CANCEL_REQUEST` ou `EVIDENCE_RE
 Avisos `refunded`/`canceled` reconhecidos no webhook são registrados como não verificados, deduplicados e encaminhados à conferência. Não mudam o estado financeiro. Novos links solicitam esses eventos ao provedor; links anteriores não são reconfigurados retroativamente. O recebimento real desses eventos não foi homologado com uma devolução de dinheiro.
 
 Os registros de intervenção são append-only para o papel runtime. Eles permanecem pendentes até que exista conciliação verificada; não há encerramento automático nem alegação de estorno concluído.
+
+
+## Encerrar pendência operacional
+
+`payment-operations.mjs resolve` usa os mesmos argumentos de configuração, pagamento, entrada e tentativa do comando `request`. A entrada contém `operationId`, `reasonCode` e `evidenceSha256`. Sem `--execute`, apresenta a prévia. A rota privada `/v1/payments/:id/operations/:operationId/resolve` exige `payments:operations`; repetição com conteúdo diferente é recusada. Encerrar um aviso não comprova devolução.
+
+## Registrar devolução já conferida na conta InfinitePay
+
+Não há rota HTTP que registre ou envie uma devolução. O papel runtime tem somente SELECT em `bank_refund_reconciliations`; o token do SystemOS não tem essa capacidade.
+
+O operador deve conferir a devolução na conta InfinitePay e obter referência bancária, valor, transação original e evidência. Um arquivo de entrada de até 4 KiB contém exatamente `id` (UUID desta conciliação), `paymentId`, `transactionNsu` original, `providerRefundReference`, `amountCents`, `occurredAt` em ISO e `evidenceSha256`. Não colocar CPF, chave API, dados bancários ou URL nesse arquivo.
+
+- Prévia: `node scripts/reconcile-bank-refund.mjs --input-file CAMINHO_ABSOLUTO`.
+- Após conferência: repetir com `--execute --confirm-infinitepay-reviewed`, sob identidade de operador com acesso ao banco administrativo local. O comando não consulta nem movimenta dinheiro no provedor; registra a conferência humana, com papel do banco e horário.
+- O registro exige liquidação original Pix, transação correspondente, valor positivo e total acumulado dentro da liquidação. Histórico imutável, referência bancária única e serialização impedem dupla contabilização.
+- A API mantém a liquidação original e acrescenta `refundedAmountCents`. O SystemOS sincroniza pagamentos aprovados a cada seis horas ou em consulta explícita, aplica valores parciais/totais sem regressão e mostra o valor devolvido no portal/app. Pagamento devolvido não habilita nova cobrança automática.
+
+A execução real desse procedimento exige uma devolução efetivamente conferida pelo operador. Os testes desta correção usam somente bancos descartáveis e dados sintéticos. Não foi executada uma devolução real nem registrada uma baixa financeira de teste na base operacional.
+
+## Proxy e fila
+
+O Next encaminha o webhook por rota com limite de corpo e metadados HMAC de origem/horário/corpo. A chave do proxy é independente da chave bancária. Essa assinatura autentica o encaminhamento local, não a autoria bancária do evento. A verdade financeira continua vindo de `/payment_check` autenticado. A origem HTTP permanece em loopback; o identificador de IP fornecido por Cloudflare não pode ser aceito de acesso direto público à origem.
+
+As pistas públicas têm fila limitada e substituível; uma rajada não esgota uma cota vitalícia. Reconsultas autenticadas verificam diretamente e têm prioridade na recuperação. Cotas de leitura, criação e conferência são separadas. A proteção não representa garantia de disponibilidade contra todo ataque volumétrico.
+
+## Limite operacional em aberto
+
+PAY-07 continua aberto: API, web e gateway ainda compartilham SID Windows. A implantação em contas dedicadas e diretórios protegidos está descrita em `../os-system-web/docs/ISOLAMENTO_RUNTIME_WINDOWS.md` e requer sessão administrativa. Não interpretar DPAPI ou banco próprio como isolamento de processos já concluído.

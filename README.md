@@ -1,5 +1,7 @@
 # Ligado Pay
 
+Estado atual da integração e pendências: [correções de 27/10/2026](docs/CORRECOES_AUDITORIA_2026-10-27.md).
+
 Operação privada de Pix: [recuperação, alertas e limite de devoluções](docs/operacao-pix.md). Devolução/cancelamento de dinheiro ficam exclusivamente na conta InfinitePay; registros internos não executam essas operações.
 
 API de gateway de pagamentos da Ligado, reutilizável pelo SystemOS, pelo aplicativo por meio de seu backend, pela futura loja virtual e por outras aplicações autorizadas.
