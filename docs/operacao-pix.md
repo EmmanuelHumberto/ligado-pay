@@ -54,4 +54,4 @@ As pistas públicas têm fila limitada e substituível; uma rajada não esgota u
 
 ## Limite operacional em aberto
 
-PAY-07 continua aberto: API, web e gateway ainda compartilham SID Windows. A implantação em contas dedicadas e diretórios protegidos está descrita em `../os-system-web/docs/ISOLAMENTO_RUNTIME_WINDOWS.md` e requer sessão administrativa. Não interpretar DPAPI ou banco próprio como isolamento de processos já concluído.
+PAY-07 teve o isolamento Windows implantado: API/web sob LigadoSystemOS e gateway sob LigadoPayGateway, com diretórios operacionais protegidos. O procedimento está em [isolamento Windows](../../os-system-web/docs/ISOLAMENTO_RUNTIME_WINDOWS.md). Restauração em outro host exige reprovisionamento de DPAPI e validação das identidades; backup isolado aprovado não comprova essa portabilidade.

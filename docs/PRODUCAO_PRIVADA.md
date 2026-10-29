@@ -1,3 +1,5 @@
+> Atualização de 29/10/2026: consulte o [estado consolidado](ESTADO_ATUAL.md). Os marcos datados abaixo são históricos; não representam, por si só, a versão ativa, a instalação atual ou novas validações.
+
 # Produção privada — implementação de 27/10/2026
 
 ## Contrato de inicialização

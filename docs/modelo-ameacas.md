@@ -1,3 +1,5 @@
+> Atualização de 29/10/2026: consulte o [estado consolidado](ESTADO_ATUAL.md). Os marcos datados abaixo são históricos; não representam, por si só, a versão ativa, a instalação atual ou novas validações.
+
 # Modelo inicial de ameaças
 
 Ativos: credenciais, autorização da conta recebedora, valor autorizado, estado financeiro, disponibilidade da API e histórico. O limite de confiança inclui a rede, a aplicação integradora, o banco e cada provedor externo.

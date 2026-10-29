@@ -1,3 +1,5 @@
+> Atualização de 29/10/2026: consulte o [estado consolidado](ESTADO_ATUAL.md). Os marcos datados abaixo são históricos; não representam, por si só, a versão ativa, a instalação atual ou novas validações.
+
 # Conector InfinitePay em validação de contrato
 
 Prioridade autorizada pelo usuário: InfinitePay para receber Pix sem a tarifa informada para Mercado Pago. Em 26/10/2026, o usuário confirmou Checkout Integrado habilitado e chave criada; informou que não existe seleção de sandbox na conta. O usuário forneceu a chave em arquivo local temporário; o helper a cifrou com DPAPI e removeu-se a entrada após confirmar a gravação. O runtime confirmou leitura protegida e sintaxe sem exibir a chave, sem enviar seu valor ao chat e sem chamadas ao provedor. Isso não comprova autenticação real. Não exigir que o usuário obtenha um sandbox inexistente ou resposta do suporte para continuar o desenvolvimento.

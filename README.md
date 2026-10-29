@@ -1,6 +1,8 @@
 # Ligado Pay
 
-Estado atual da integração e pendências: [correções de 27/10/2026](docs/CORRECOES_AUDITORIA_2026-10-27.md).
+Estado atual da integração, produção privada e limites: [consolidação de 29/10/2026](docs/ESTADO_ATUAL.md). [Índice completo](docs/INDICE.md).
+
+Revalidação de 29/10: 36 testes unitários, 26 integrados e contrato OpenAPI aprovados; comunicação com SystemOS verificada em bancos separados e provedor sintético, sem cobrança real. [Escopo e limites](../os-system-web/docs/VALIDACAO_JORNADAS_2026-10-29.md).
 
 Operação privada de Pix: [recuperação, alertas e limite de devoluções](docs/operacao-pix.md). Devolução/cancelamento de dinheiro ficam exclusivamente na conta InfinitePay; registros internos não executam essas operações.
 
@@ -12,7 +14,7 @@ O Ligado Pay recebe solicitações de pagamento dos servidores das aplicações 
 
 São responsabilidades do gateway:
 
-- Criar, consultar, cancelar e solicitar estorno de cobranças, conforme as capacidades e contratos do provedor.
+- Criar e consultar cobranças; registrar intenções e conciliar resultados conforme as capacidades do provedor. Na operação InfinitePay atual, cancelamentos/devoluções de dinheiro são feitos exclusivamente na conta do provedor.
 - Controlar cobranças, tentativas e estados financeiros, incluindo resultados incertos, estornos parciais e contestações quando suportados.
 - Integrar provedores por adaptadores, com credenciais protegidas e segregadas por conta recebedora e ambiente.
 - Autenticar aplicações integradoras e limitar suas permissões sobre contas recebedoras, operações e cobranças.
@@ -52,11 +54,11 @@ Requisitos e sequência de entrega: [arquitetura e segurança](docs/arquitetura-
 
 Para continuar o trabalho, leia primeiro as [anotações de retomada](docs/retomada.md), incluindo o Pix real já confirmado e as restrições para não repetir a operação.
 
-Base local executável em TypeScript/Fastify com PostgreSQL próprio, autenticação de serviço, autorização por aplicação/recebedor, intenção durável, idempotência e eventos/outbox transacionais. O padrão é simulado. Há composição local selecionável para InfinitePay, com segredo protegido, link persistido e confirmação por consulta; criação real fica desligada por padrão. A conta é identificada como produção, sem inventar sandbox. Implantação em produção ainda bloqueada. Nenhum pagamento foi migrado e nenhum serviço foi publicado. SystemOS, portal e app permanecem independentes desta preparação.
+API TypeScript/Fastify com PostgreSQL próprio, autenticação de serviço, autorização por aplicação/recebedor, intenção durável, idempotência e eventos transacionais. Simulação permanece o padrão local; produção privada InfinitePay foi publicada sob conta Windows dedicada. O backend SystemOS está integrado ao portal e ao app. Pix reais foram pagos e confirmados; não repetir esses testes nem apagar seus marcadores.
 
-O consumidor SystemOS tem vínculo financeiro, retorno protegido e recuperação por referência, com reserva durável e proteção contra tentativas simultâneas. Há identidade privada de leitura com DPAPI e conexão preparada no portal/app. Os dois backends foram testados juntos por HTTP com bancos separados e provedor sintético. O Moto G24 passou em 14 cenários offline, e o APK principal foi atualizado com hash conferido, sem desinstalar ou limpar dados. Criação real continua bloqueada, sem publicação web/API ou migração operacional. O retorno do app usa o portal autenticado no navegador. Permissões operacionais, implantação, homologação financeira, conciliação e devolução permanecem pendentes; ver [retomada](docs/retomada.md).
+Notificações encaminhadas pelo SystemOS usam proxy HMAC e reconsulta financeira; retorno do navegador não comprova pagamento. Rotação de credenciais e troca operacional foram concluídas. Backups e restauração isolada têm evidências; cópia externa confirmada e homologação integral de cartão/3DS continuam distintas dessas provas. Nenhuma nova cobrança, migração ou publicação foi executada na revisão documental de 29/10.
 
 - [Arquitetura executável e controles presentes](docs/arquitetura.md)
 - [Modelo de ameaças e pendências](docs/modelo-ameacas.md)
 - [Execução e testes locais](docs/desenvolvimento-local.md)
-- [InfinitePay: adaptador em validação, limites e homologação pendente](docs/infinitepay.md)
+- [InfinitePay: adaptador, histórico de validação e limites](docs/infinitepay.md)

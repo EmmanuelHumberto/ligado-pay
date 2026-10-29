@@ -1,6 +1,8 @@
+> Atualização de 29/10/2026: consulte o [estado consolidado](ESTADO_ATUAL.md). Os marcos datados abaixo são históricos; não representam, por si só, a versão ativa, a instalação atual ou novas validações.
+
 # Arquitetura executável
 
-Base local de 25/10/2026, atualizada em 26/10/2026. Monólito modular, exclusivamente API. Simulação é o padrão; a versão 0.2 permite composição local InfinitePay com criação real desligada por padrão. Não habilitado para implantação em produção. [Fluxo InfinitePay atual](infinitepay.md).
+Base local de 25/10/2026, atualizada em 26/10/2026. Monólito modular, exclusivamente API. Simulação é o padrão; a versão 0.2 permite composição local InfinitePay com criação real desligada por padrão. Este é o marco histórico da base local; a produção privada foi implantada posteriormente, conforme [estado atual](ESTADO_ATUAL.md) e [contrato operacional](PRODUCAO_PRIVADA.md). [Fluxo InfinitePay atual](infinitepay.md).
 
 ```mermaid
 flowchart TB
@@ -56,7 +58,7 @@ flowchart TB
 
 O simulador não gera QR pagável, link de checkout, transação real ou estado pago. A resposta informa `simulated: true` e `realPaymentsEnabled: false`. Não conectar essa simulação à aprovação real de serviços. No modo InfinitePay, a resposta usa `simulated=false`, `provider=infinitepay` e ambiente financeiro `production`, com criação real conforme switch explícito. Pagamento confirmado é registrado com exclusividade de transação e eventos atômicos; os testes ainda são locais e não autorizam liberação de serviços reais.
 
-Não existem endpoints públicos de webhook, estorno ou administração. Eventos são persistidos, mas ainda não enviados. Nenhuma integração comercial foi migrada.
+A API atual inclui notificações encaminhadas por proxy autenticado, consulta financeira e rotas privilegiadas de operação; consulte o contrato versionado e [operação Pix](operacao-pix.md). Não há endpoint que devolva dinheiro no provedor. Os limites descritos acima como primeiro contrato são históricos.
 
 ## Barreiras para produção
 

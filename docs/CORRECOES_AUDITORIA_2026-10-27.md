@@ -1,3 +1,5 @@
+> Atualização de 29/10/2026: consulte o [estado consolidado](ESTADO_ATUAL.md). Os marcos datados abaixo são históricos; não representam, por si só, a versão ativa, a instalação atual ou novas validações.
+
 # Resultado das correções da integração
 
 Referência: AUDITORIA_INTEGRACAO_2026-10-26.md. Situação registrada em 27/10/2026 UTC. Nenhuma cobrança, devolução ou cancelamento real foi executado nesta rodada.
