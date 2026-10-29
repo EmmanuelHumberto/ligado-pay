@@ -92,3 +92,9 @@ expiração e revogação; o provisionamento e a troca real DPAPI entre contas d
 continuam como procedimento administrativo coordenado. Sem migração, cobrança ou
 movimentação financeira. Recuperação administrativa protegida em
 publication-d3a699e5af154ee7b40c5c16886f3af3. A nota anterior de cancelamento é histórica.
+
+## Troca operacional concluída
+
+O SystemOS executou o procedimento administrativo de provisionamento sob LigadoSystemOS e troca coordenada. Resultado PASSOU/COMPLETED: a nova credencial foi protegida por DPAPI sob o serviço e sob o operador, e as configurações runtime/recuperação do gateway foram atualizadas. A janela preservou applicationId, receiverId, permissões, limites e referências; após a revogação, a credencial anterior retornou 401 e a nova consultou pagamento existente com campos financeiros iguais. Gateway/API/banco e domínio público conferidos depois da troca. Nenhum endpoint ou contrato de pagamento foi modificado; nenhuma cobrança ou chamada ao provedor foi feita para testar.
+
+Procedimento e recuperação: ../../os-system-web/docs/ROTACAO_OPERACIONAL_BEARER_2026-10-27.md. Evidência sanitizada: ../../os-system-web/evidencias/rotacao-operacional-bearer-2026-10-27.json. 25 testes operacionais SystemOS aprovados. O backup de dados e a restauração isolada posteriores à troca foram executados manualmente e passaram às 22:23:35 UTC: 79 tabelas SystemOS, 192.445 registros, 200 objetos e banco do gateway, hashes e sequências conferidos sem alterar produção. O ensaio não comprova portabilidade de DPAPI para outra identidade/host, que exige reprovisionamento. Upload externo permanece pendente; a nota de chave operacional intacta nas seções anteriores descreve somente aquele marco histórico.
