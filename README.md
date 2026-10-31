@@ -1,6 +1,8 @@
 # Ligado Pay
 
-Estado atual da integração, produção privada e limites: [consolidação de 29/10/2026](docs/ESTADO_ATUAL.md). [Índice completo](docs/INDICE.md).
+Documentação vigente: [estado do sistema](docs/ESTADO_ATUAL.md), [índice completo](docs/INDICE.md) e [status da segunda crítica](../os-system-web/docs/REVISAO_CRITICA_STATUS.md).
+
+O estado consolidado em 31/10/2026 distingue a operação privada publicada, os testes e as pendências de homologação. Guias datados preservam o histórico das entregas.
 
 Revalidação de 29/10: 36 testes unitários, 26 integrados e contrato OpenAPI aprovados; comunicação com SystemOS verificada em bancos separados e provedor sintético, sem cobrança real. [Escopo e limites](../os-system-web/docs/VALIDACAO_JORNADAS_2026-10-29.md).
 
