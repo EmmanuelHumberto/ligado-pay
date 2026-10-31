@@ -1,6 +1,6 @@
 # Estado atual — Ligado Pay
 
-Consolidado em 29/10/2026 com base nas publicações, fontes e evidências registradas. Esta revisão não fez chamadas financeiras reais, migrações operacionais ou publicação. As migrações dos testes foram aplicadas somente nos bancos sintéticos indicados abaixo.
+Consolidado com atualização em 30/10/2026, com base nas publicações, fontes e evidências registradas. Esta revisão não fez chamadas financeiras reais, migrações operacionais ou publicação. As migrações dos testes foram aplicadas somente nos bancos sintéticos indicados abaixo.
 
 ## Escopo e integração
 
@@ -34,3 +34,9 @@ Consultar [produção privada](PRODUCAO_PRIVADA.md), [arquitetura](arquitetura.m
 A limpeza de 29/10 não encontrou resíduos seguros que exigissem remoção neste repositório. `.local`, marcadores financeiros, `dist`, dependências, credenciais e dados foram preservados. A rodada altera documentação, sem modificar configuração financeira.
 
 [Índice completo da documentação](INDICE.md).
+
+## Estabilização de 30/10/2026
+
+Contrato oficial do checkout reconferido: o cartão permanece disponível no link. A confirmação automática do gateway continua exclusivamente Pix; cartão exige conferência e não é convertido em PAID_PIX. Avisos anteriores ao checkout foram corrigidos nos consumidores web/Android; política do SystemOS passou a identificar InfinitePay/Ligado Pay e Mercado Pago quando habilitado. O código/configuração financeira do gateway não mudou nesta rodada.
+
+Integração SystemOS–gateway reexecutada em bancos descartáveis distintos no servidor de testes: 30 testes e 25 cenários legados aprovados, com transporte do provedor sintético. O executor foi corrigido para não depender da antiga porta 25432 desligada; aceita somente destinos de teste explicitamente limitados. Nenhuma cobrança, devolução ou consulta financeira real nesta etapa. Plano/evidência coordenados em ../../os-system-web/docs/ESTABILIZACAO_SISTEMAS_2026-10-30.md.
