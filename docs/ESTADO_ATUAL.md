@@ -2,6 +2,8 @@
 
 Atualizado em 31/10/2026. API privada de gateway de pagamentos, sem frontend, regras de OS ou tabelas compartilhadas com consumidores. InfinitePay é o provedor integrado; SystemOS e Android usam o gateway por meio do backend autorizado. [Índice](INDICE.md) e [painel dos três sistemas](../../os-system-web/docs/ESTADO_ECOSSISTEMA.md).
 
+Infraestrutura de 02/11: imagem Linux e gateway de teste instalados no VPS Debian 13, com banco separado, credenciais sintéticas, criação e saída externa desativadas. A produção abaixo não foi migrada. [Instalação Linux e limites](VPS_LINUX.md).
+
 ## Operação vigente
 
 Produção privada sob LigadoPayGateway, separada de LigadoSystemOS, com private-production e NODE_ENV=production. Fonte identificada no manifesto coordenado: `4ce591955f9ce0edf6b9771cc955f7f825a07e4c`. A publicação SystemOS de 31/10 manteve o código e a configuração financeira do gateway. [Publicação coordenada](../../os-system-web/evidencias/pdf-conclusao-publicacao-2026-10-31.json).

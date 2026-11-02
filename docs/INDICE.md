@@ -16,6 +16,8 @@ Os documentos abaixo estão organizados por assunto. Datas, propostas e resultad
 
 ## Operação e recuperação
 
+- [Gateway no VPS Linux](VPS_LINUX.md)
+
 - [Operação privada do Pix](operacao-pix.md)
 - [Produção privada — implementação de 27/10/2026](PRODUCAO_PRIVADA.md)
 - [Rotação de credenciais implementada, não publicada — 27/10/2026](retomada.md)
