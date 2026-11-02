@@ -1,0 +1,16 @@
+**
+!package.json
+!package-lock.json
+!tsconfig.json
+!src/
+!src/**
+!contracts/
+!contracts/**
+!migrations/
+!migrations/**
+!infra/
+!infra/vps/
+!infra/vps/**
+**/.env*
+**/node_modules
+**/*.log
