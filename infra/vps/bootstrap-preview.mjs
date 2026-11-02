@@ -21,4 +21,5 @@ try{
  await pool.query('GRANT UPDATE ON notification_discard_counts TO ligado_pay_runtime');
  await pool.query('GRANT SELECT ON bank_refund_reconciliations TO ligado_pay_runtime');
  console.log('SYNTHETIC_GATEWAY_DATABASE_READY');
-}finally{await pool.end();}
+}catch{console.error('SYNTHETIC_GATEWAY_INITIALIZATION_FAILED: private details omitted');process.exitCode=1;}
+finally{await pool.end();}
