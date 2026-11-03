@@ -10,7 +10,8 @@ Uma solicitação, recibo ou aviso de webhook não comprova devolução. Não tr
 
 - A confirmação consulta a API oficial e valida os dados antes de registrar o pagamento. As pistas recebidas ficam em uma fila persistente, com tentativas limitadas e proteção contra processamento concorrente.
 - Falha definitiva da fila, criação incerta, falta de identificadores, conferência financeira e checkout vencido geram pendências. Sem identificadores suficientes, obter os dados na conta InfinitePay: não recriar a cobrança por tentativa.
-- Expiração oculta o link vencido no resumo do SystemOS. Não presume cancelamento, não libera outra emissão e não descarta uma confirmação tardia.
+- Expiração oculta o link vencido no resumo do SystemOS. Não presume cancelamento nem autoriza outra emissão por si só. A [renovação implementada no consumidor](../../os-system-web/docs/RENOVACAO_CHECKOUT_2026-11-03.md) exige conferência administrativa do não recebimento e mantém a tentativa anterior sob conciliação. O cliente solicita uma nova referência somente após essa liberação. Confirmação tardia bloqueia a operação para conferência, sem baixa ou devolução fictícia.
+- O gateway conserva seu contrato e sua validade de uma hora; não recebe regras de OS ou orçamento. A renovação no consumidor cria uma nova referência externa opaca, sem alterar, apagar ou reenviar a criação da tentativa anterior. Implantação e autorização real constam no documento SystemOS; não representam uma nova versão do gateway.
 - `GET /v1/operations` e `GET /v1/payments/:id/operations` exigem autenticação de serviço e respeitam aplicação/recebedor. O relatório lista até cem registros e informa `truncated`; não é um extrato bancário.
 - O monitor operacional existente do SystemOS consulta o relatório e grava códigos sem dados pessoais em `monitor-status.json` e `alertas.jsonl`, na pasta privada `SystemOSOperacao`. Não há envio de mensagem ou push ao cliente.
 
