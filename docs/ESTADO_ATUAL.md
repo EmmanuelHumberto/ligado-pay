@@ -1,12 +1,12 @@
 # Estado atual do Ligado Pay
 
-Atualizado em 31/10/2026. API privada de gateway de pagamentos, sem frontend, regras de OS ou tabelas compartilhadas com consumidores. InfinitePay é o provedor integrado; SystemOS e Android usam o gateway por meio do backend autorizado. [Índice](INDICE.md) e [painel dos três sistemas](../../os-system-web/docs/ESTADO_ECOSSISTEMA.md).
+Atualizado em 03/11/2026. API privada de gateway de pagamentos, sem frontend, regras de OS ou tabelas compartilhadas com consumidores. InfinitePay é o provedor integrado; SystemOS e Android usam o gateway por meio do backend autorizado. [Índice](INDICE.md) e [painel dos três sistemas](../../os-system-web/docs/ESTADO_ECOSSISTEMA.md).
 
-Infraestrutura de 02/11: imagem Linux e gateway de teste instalados no VPS Debian 13, com banco separado, credenciais sintéticas, criação e saída externa desativadas. A produção abaixo não foi migrada. [Instalação Linux e limites](VPS_LINUX.md).
+Produção privada migrada para o VPS Debian 13 em 03/11, junto ao SystemOS, com banco, papel e UID separados. Escritores Windows desativados; dados legados preservados. Backup de produção Linux, restauração isolada e cópia cifrada externa conferidos. [Corte e evidências](../../os-system-web/docs/VPS_PRODUCAO_2026-11-03.md). A etapa sintética anterior permanece em [VPS Linux](VPS_LINUX.md).
 
 ## Operação vigente
 
-Produção privada sob LigadoPayGateway, separada de LigadoSystemOS, com private-production e NODE_ENV=production. Fonte identificada no manifesto coordenado: `4ce591955f9ce0edf6b9771cc955f7f825a07e4c`. A publicação SystemOS de 31/10 manteve o código e a configuração financeira do gateway. [Publicação coordenada](../../os-system-web/evidencias/pdf-conclusao-publicacao-2026-10-31.json).
+Produção em `ligado-production-gateway-1`, UID `10003:10003`, modo private-production e NODE_ENV=production. Imagem `ligado/pay:93e9274b3366af9a00f5579069d8503899bce9c6-41565924386-1`; banco `ligado_pay_local` separado, em loopback 55439, sob `ligado_pay_runtime` sem superusuário/bypass. A API em 3305 permanece privada. Configuração da aplicação/recebedor, chaves, idempotência e dados existentes foram preservados; não foi criada cobrança/devolução para validar o corte. O manifesto Windows `4ce5919` é histórico.
 
 Pix tem confirmação automática por consulta ao provedor. O checkout pode oferecer cartão, mas isso não comprova liquidação automática nem homologação de cartão/3DS; cartão permanece em conferência. Devoluções/cancelamentos do dinheiro são feitos na conta InfinitePay. Intenções e registros internos não movimentam dinheiro por si só. [Operação Pix](operacao-pix.md).
 
@@ -14,11 +14,11 @@ Credenciais têm escopo por aplicação/recebedor e ciclo de validade/revogaçã
 
 ## Verificações
 
-36 testes unitários, 26 integrados e contrato aprovados na revalidação de 29/10; integração dos consumidores validada em bancos separados com provedor sintético. CI remoto aprovado para a fonte acima: [execução](https://github.com/EmmanuelHumberto/ligado-pay/actions/runs/41152640294). O backup de 31/10 restaurou o banco do gateway em host Linux separado, sem iniciar aplicação ou provedor. [Recuperação](../../os-system-web/evidencias/recuperacao-linux-2026-10-31.json).
+36 testes unitários, 26 integrados e contrato aprovados na revalidação de 29/10; consumidores em bancos separados com provedor sintético. CI histórico: [execução](https://github.com/EmmanuelHumberto/ligado-pay/actions/runs/41152640294). Na migração, 23 verificações das imagens candidatas passaram, incluindo saúde autenticada e leitura de pagamento correspondente ao snapshot. O monitor final confirma gateway e backup/restauração/cópia externa de produção. A imagem do usuário mostra o pagamento anterior no portal; não se repetiu o teste de R$ 1,00. [Validação final](../../os-system-web/evidencias/vps-validacao-restaurada-final-2026-11-03.json) e [produção](../../os-system-web/evidencias/vps-producao-final-2026-11-03.json).
 
 ## Pendências
 
-Retirar composição local legada após inventário de consumidores; revisar procedimento de recarga de revogação; concluir homologação de cartão/3DS e recuperação DPAPI em outro Windows. Confirmar cópia externa do backup atual permanece separado da recuperação do kit de chave; sincronização continua suspensa por orientação do usuário.
+Composição Windows preservada e escritores desativados. Retorno exige conciliar dados Linux. Três alertas anteriores permanecem (`MISSING_PROVIDER_CORRELATION`, `EXPIRED_UNCONFIRMED`), sem alteração dos estados para eliminá-los. Revisão de revogação, cartão/3DS e recuperação DPAPI em outro Windows mantêm seus limites. Cópia externa do primeiro backup Linux foi conferida; recuperação independente das chaves é critério separado. Drive continua sem sincronização automática.
 
 A [segunda crítica](../../os-system-web/docs/REVISAO_CRITICA_STATUS.md) foi analisada. Nenhuma nova correção financeira ou de segurança foi implementada em consequência dela. Teto e revisão de recebimentos manuais pertencem ao SystemOS, não ao gateway.
 

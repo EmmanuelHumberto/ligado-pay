@@ -1,5 +1,7 @@
 # Limite do projeto
 
+- Produção do gateway migrada para o VPS Debian 13 em 03/11/2026. Consulte `../os-system-web/docs/VPS_PRODUCAO_2026-11-03.md`. Bancos/configuração Windows locais são legado preservado; não reative escritores antigos sem conciliar os dados Linux.
+
 O usuário determinou que o Ligado Pay seja unicamente uma API de gateway de pagamentos. Preserve esse limite em código, contratos, dependências e documentação.
 
 - Ao retomar, leia `docs/retomada.md`: o teste real de R$ 1,00 já foi pago e confirmado; não repetir a operação nem remover o marcador de tentativa para recriá-la.

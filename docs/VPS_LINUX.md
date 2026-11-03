@@ -1,6 +1,6 @@
 # Gateway no VPS Linux
 
-Continuação até 03/11: papel operacional restrito e configuração Linux preparados; imagem Pay entregue pelo GitHub e carregada, sem ativação. Backup da cópia real recuperado da nova pasta privada do Drive e autenticado, com chave separada. A produção permanece no Windows e nenhuma cobrança foi repetida. [Fluxo de entrega e pendências](../../os-system-web/docs/VPS_ENTREGA_E_BACKUP_2026-11-03.md).
+Estado vigente em 03/11: gateway e banco separado em produção no VPS; escritores Windows desativados. Saúde autenticada, backup Linux, restauração e cópia externa passaram, sem repetir cobrança. [Corte e evidências](../../os-system-web/docs/VPS_PRODUCAO_2026-11-03.md). As etapas sintéticas/preparatórias abaixo são históricas.
 
 Instalação de teste concluída em 02/11/2026 no Debian 13, usando a imagem da fonte `93e9274b3366af9a00f5579069d8503899bce9c6`. O runtime Windows segue atendendo a produção. [Estado coordenado e evidência](../../os-system-web/docs/VPS_INSTALACAO_SINTETICA.md).
 
