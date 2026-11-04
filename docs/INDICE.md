@@ -10,6 +10,8 @@ Os documentos abaixo estão organizados por assunto. Datas, propostas e resultad
 
 ## Segurança e identidade
 
+- [Identidade compartilhada Ligado — decisão de 04/11/2026, ainda não implementada](IDENTIDADE_COMPARTILHADA_2026-11-04.md)
+
 - [Arquitetura e segurança da primeira entrega](arquitetura-seguranca-inicial.md)
 - [Modelo inicial de ameaças](modelo-ameacas.md)
 - [Rotação de credenciais de aplicação](ROTACAO_CREDENCIAIS.md)

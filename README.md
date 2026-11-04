@@ -1,5 +1,7 @@
 # Ligado Pay
 
+> Arquitetura de 04/11/2026: [identidade compartilhada Ligado](docs/IDENTIDADE_COMPARTILHADA_2026-11-04.md) para SystemOS, Android e LIGADO STORE, com sessões e permissões próprias. Ligado Pay permanece com autenticação entre serviços. Decisão documentada; SSO ainda não implementado e logins atuais preservados.
+
 Documentação vigente: [estado do sistema](docs/ESTADO_ATUAL.md), [índice completo](docs/INDICE.md) e [status da segunda crítica](../os-system-web/docs/REVISAO_CRITICA_STATUS.md).
 
 O estado consolidado em 03/11/2026 registra a API privada em produção no VPS Debian 13, o corte dos escritores Windows, os testes e as pendências de homologação. Guias datados preservam o histórico das entregas.

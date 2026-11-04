@@ -1,5 +1,7 @@
 # Arquitetura e segurança da primeira entrega
 
+> Decisão de 04/11/2026: [identidade compartilhada Ligado e limite do gateway](IDENTIDADE_COMPARTILHADA_2026-11-04.md). Login humano fica fora do Pay; manter autenticação entre servidores por aplicação, ambiente e recebedor. Nenhuma credencial ou integração financeira foi alterada.
+
 Decisão do usuário em 25/10/2026: priorizar a segurança da infraestrutura; gateway exclusivamente API; primeiro consumidor é o SystemOS na aba de pagamentos da aprovação de serviços, em portal web e app. Este documento contém requisitos, não comprovação de controles implementados.
 
 ## Fluxo e fronteiras
