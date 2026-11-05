@@ -69,3 +69,13 @@ Este núcleo de decisão está registrado com o mesmo conteúdo nos quatro repos
 ## Impacto neste repositório
 
 Não implementar login Google, cadastro de pessoas, sessões de cliente, portal ou servidor de identidade neste gateway. Preservar as credenciais e a autorização atuais entre serviços por aplicação, ambiente e conta recebedora. A autenticação humana ocorre nas aplicações consumidoras; a documentação desta decisão não troca as credenciais do Pay nem altera cobranças, webhooks ou conciliação.
+
+## Decisão do titular — Keycloak, começando pela loja
+
+Em 04/11/2026 o titular escolheu Keycloak compartilhado, isolado no VPS, iniciando pelo LIGADO STORE. A infraestrutura e o banco de identidade são separados dos bancos comerciais e do gateway. Cliente OIDC distinto para compradores e equipe da loja; SystemOS/Android serão integrados posteriormente, sem alterar seus logins atuais nesta etapa. Ligado Pay continua fora do login de pessoas.
+
+Estado em **05/11/2026**: `login.ligadotattoo.com.br`, realm `ligado`, está publicado com HTTPS e broker Google conectado. O titular cadastrou o autenticador, confirmado por metadados no servidor. Admin, realm master e endpoints operacionais continuam bloqueados pelo proxy público. A loja mantém autorização explícita por issuer/subject; e-mail, comprador e senha externa da homologação não conferem administração.
+
+Cada aplicação terá cliente OIDC próprio no Keycloak. Os clientes Store permanecem desativados: retorno administrativo implementado/testado localmente, mas token forte real, publicação, migrações 006/007 e vínculo de autorização ainda pendentes. Cadastro de OTP não comprova que a Store validou um login administrativo real. Nenhuma conta ou sessão vigente de SystemOS/Android/Pay foi migrada ou alterada.
+
+Backup cifrado da identidade e restauração PostgreSQL foram verificados; boot completo da identidade contra base restaurada e recuperação humana continuam pendentes. A cópia cifrada local foi atualizada sem sincronizar com Drive. Estado executado, limites e evidências: `ligado-loja/docs/31_IDENTIDADE_KEYCLOAK.md`.
