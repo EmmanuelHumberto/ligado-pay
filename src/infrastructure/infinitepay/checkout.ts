@@ -15,6 +15,7 @@ export interface InfinitePayAccount {
   handle: string;
   maxAmountCents: number;
   redirectUrl: string;
+  applicationRedirectUrls?: Readonly<Record<string,string>>;
   webhookUrl?: string;
 }
 
@@ -30,7 +31,11 @@ export class InfinitePayCheckout implements CheckoutConnector {
         redirect.hostname === 'localhost' || redirect.hostname.endsWith('.localhost') || !/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(redirect.hostname)) {
       throw new Error('Invalid InfinitePay account configuration.');
     }
-    this.account = Object.freeze({ ...account }); this.now = now;
+    for(const [app,url] of Object.entries(account.applicationRedirectUrls??{})){
+      const target=new URL(url);
+      if(!/^[a-z][a-z0-9_-]{2,63}$/.test(app)||target.protocol!=='https:'||target.username||target.password||target.port||target.search||target.hash||target.hostname==='localhost'||!target.hostname.includes('.'))throw new Error('Invalid application redirect.');
+    }
+    this.account = Object.freeze({ ...account,applicationRedirectUrls:Object.freeze({...account.applicationRedirectUrls}) }); this.now = now;
     if(account.webhookUrl){
       const hook=new URL(account.webhookUrl);
       if(hook.origin!==redirect.origin||hook.pathname!=='/ligado-pay/webhooks/infinitepay'||hook.search||hook.hash||hook.username||hook.password) {
@@ -53,7 +58,7 @@ export class InfinitePayCheckout implements CheckoutConnector {
     if (expires <= this.now() || expires > this.now() + 24 * 60 * 60 * 1000) throw new CheckoutError('INVALID_CHECKOUT_INTENT');
     const response = await this.transport.post('create-link', {
       order_nsu: intent.paymentId,
-      redirect_url: this.account.redirectUrl,
+      redirect_url: (intent.applicationId&&this.account.applicationRedirectUrls?.[intent.applicationId])||this.account.redirectUrl,
       ...(this.account.webhookUrl?{webhook:{url:this.account.webhookUrl,events:['paid','settled','refunded','canceled']}}:{}),
       items: [{ quantity: 1, price: intent.amountCents, description: 'Pagamento Ligado' }],
       options: { single_payment: true, valid_until: new Date(expires).toISOString(),

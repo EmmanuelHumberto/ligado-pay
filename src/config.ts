@@ -16,7 +16,7 @@ export interface Config {
   credentials: Credential[];
   provider: 'simulated' | 'infinitepay';
   infinitepay?: { receiverId: string; handle: string; redirectUrl: string; apiKeyFile: string; liveCreationEnabled: boolean;
-    webhookUrl?:string; webhookApplicationId?:string; notificationProxyKeyFile?:string };
+    webhookUrl?:string; webhookApplicationId?:string; webhookApplicationIds?:string[]; applicationRedirectUrls?:Record<string,string>; notificationProxyKeyFile?:string };
 }
 const identifier = /^[a-z][a-z0-9_-]{2,63}$/;
 const integer = (value: unknown, min: number, max: number): value is number =>
@@ -107,19 +107,33 @@ export function parseConfig(value: unknown, nodeEnv: string | undefined): Config
     let redirect: URL;
     try { redirect = new URL(c['redirectUrl']); } catch { return fail(); }
     if (redirect.protocol !== 'https:' || redirect.username || redirect.password || redirect.hash) return fail();
+    if(c['applicationRedirectUrls']!==undefined){
+      const routes=c['applicationRedirectUrls'];
+      if(!routes||typeof routes!=='object'||Array.isArray(routes))return fail();
+      const mapping:Record<string,string>={};
+      for(const [app,value] of Object.entries(routes)){
+        if(!credentials.some(p=>p.applicationId===app)||typeof value!=='string')return fail();
+        let u:URL;try{u=new URL(value);}catch{return fail();}
+        if(u.protocol!=='https:'||u.username||u.password||u.port||u.search||u.hash||u.hostname==='localhost'||!u.hostname.includes('.'))return fail();
+        mapping[app]=u.href;
+      }
+      result.infinitepay.applicationRedirectUrls=mapping;
+    }
     if(c['notificationProxyKeyFile']!==undefined){
       if(typeof c['notificationProxyKeyFile']!=='string'||!isAbsolute(c['notificationProxyKeyFile']))return fail();
       result.infinitepay.notificationProxyKeyFile=c['notificationProxyKeyFile'];
     }
-    if(c['webhookUrl']!==undefined||c['webhookApplicationId']!==undefined){
-      if(typeof c['webhookUrl']!=='string'||typeof c['webhookApplicationId']!=='string'||!result.infinitepay.notificationProxyKeyFile)return fail();
+    if(c['webhookUrl']!==undefined||c['webhookApplicationId']!==undefined||c['webhookApplicationIds']!==undefined){
+      if(typeof c['webhookUrl']!=='string'||!result.infinitepay.notificationProxyKeyFile)return fail();
+      const ids=c['webhookApplicationIds']??[c['webhookApplicationId']];
+      if(!Array.isArray(ids)||!ids.length||ids.length>20||new Set(ids).size!==ids.length||ids.some(id=>typeof id!=='string'||!identifier.test(id))||(c['webhookApplicationId']!==undefined&&!ids.includes(c['webhookApplicationId'])))return fail();
       let hook:URL,redirect:URL;
       try{hook=new URL(c['webhookUrl']);redirect=new URL(c['redirectUrl']);}catch{return fail();}
-      const principal=credentials.find(p=>p.applicationId===c['webhookApplicationId']);
+      const principals=ids.map(id=>credentials.find(p=>p.applicationId===id));
       if(hook.protocol!=='https:'||hook.origin!==redirect.origin||hook.pathname!=='/ligado-pay/webhooks/infinitepay'||
-        hook.search||hook.hash||hook.username||hook.password||!principal||
-        !principal.permissions.includes('payments:read')||!principal.permissions.includes('payments:check'))return fail();
-      result.infinitepay.webhookUrl=hook.href;result.infinitepay.webhookApplicationId=principal.applicationId;
+        hook.search||hook.hash||hook.username||hook.password||principals.some(p=>!p||!p.permissions.includes('payments:read')||!p.permissions.includes('payments:check')))return fail();
+      result.infinitepay.webhookUrl=hook.href;result.infinitepay.webhookApplicationIds=ids as string[];
+      if(typeof c['webhookApplicationId']==='string')result.infinitepay.webhookApplicationId=c['webhookApplicationId'];
     }
   }
   return result;

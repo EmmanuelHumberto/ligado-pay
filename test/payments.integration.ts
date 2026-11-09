@@ -537,3 +537,21 @@ test('HTTP checkout flow requires dedicated permission, ignores no fields and ex
   const paid = await api.inject({ method: 'POST', url: `/v1/payments/${result.id}/check`, headers, payload: hints });
   assert.equal(paid.statusCode, 200); assert.equal(paid.json<{ state: string }>().state, 'PAID_PIX');
 });
+
+
+test('one notification channel routes only configured application identities and preserves cross-app isolation',async()=>{
+ const f=checkoutFixture();const other={...f.p,applicationId:'store-'+randomUUID()};
+ const unconfigured={...f.p,applicationId:'unconfigured-'+randomUUID()};
+ const payments=[];
+ for(const p of [f.p,other,unconfigured])payments.push((await f.service.create(p,input(),randomUUID())).payment);
+ const router=new InfinitePayNotifications(pool,f.service,[f.p,other]);
+ for(const payment of payments)await router.enqueue({orderNsu:payment.id,transactionNsu:randomUUID(),slug:payment.id});
+ assert.equal((await pool.query('SELECT count(*)::int n FROM checkout_notifications WHERE payment_id=$1',[payments[2]!.id])).rows[0].n,0);
+ await router.tick();
+ assert.equal((await f.service.get(f.p,payments[0]!.id)).state,'PAID_PIX');
+ assert.equal((await f.service.get(other,payments[1]!.id)).state,'PAID_PIX');
+ assert.equal((await f.service.get(unconfigured,payments[2]!.id)).state,'PENDING');
+ await assert.rejects(f.service.get(f.p,payments[1]!.id),{code:'PAYMENT_NOT_FOUND'});
+ await assert.rejects(f.service.get(other,payments[0]!.id),{code:'PAYMENT_NOT_FOUND'});
+ assert.equal(f.creates(),3);assert.equal(f.checks(),2);
+});

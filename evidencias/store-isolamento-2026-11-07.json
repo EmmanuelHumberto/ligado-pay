@@ -1,0 +1,13 @@
+{
+  "result": "PASSOU",
+  "unitTests": 38,
+  "integrationTests": 27,
+  "contractCheckPassed": true,
+  "multipleApplicationsIsolated": true,
+  "applicationRedirectTested": true,
+  "productionChanged": false,
+  "newCredentialRegistered": false,
+  "realPaymentsCreated": false,
+  "providerCallsExecuted": false,
+  "localTestDatabaseStopped": true
+}

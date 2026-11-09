@@ -66,3 +66,5 @@ Notificações encaminhadas pelo SystemOS usam proxy HMAC e reconsulta financeir
 - [Modelo de ameaças e pendências](docs/modelo-ameacas.md)
 - [Execução e testes locais](docs/desenvolvimento-local.md)
 - [InfinitePay: adaptador, histórico de validação e limites](docs/infinitepay.md)
+
+Integração da LIGADO STORE: [preparação local, isolamento de aplicações e ativação pendente](docs/store-integracao.md). Produção vigente é Linux/VPS; referências anteriores a execução Windows são históricas. Nenhuma cobrança ou mudança no gateway publicado foi feita nesta preparação.

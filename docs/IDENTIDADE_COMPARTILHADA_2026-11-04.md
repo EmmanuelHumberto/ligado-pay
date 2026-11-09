@@ -79,3 +79,9 @@ Estado em **05/11/2026**: `login.ligadotattoo.com.br`, realm `ligado`, está pub
 Cada aplicação terá cliente OIDC próprio no Keycloak. Os clientes Store permanecem desativados: retorno administrativo implementado/testado localmente, mas token forte real, publicação, migrações 006/007 e vínculo de autorização ainda pendentes. Cadastro de OTP não comprova que a Store validou um login administrativo real. Nenhuma conta ou sessão vigente de SystemOS/Android/Pay foi migrada ou alterada.
 
 Backup cifrado da identidade e restauração PostgreSQL foram verificados; boot completo da identidade contra base restaurada e recuperação humana continuam pendentes. A cópia cifrada local foi atualizada sem sincronizar com Drive. Estado executado, limites e evidências: `ligado-loja/docs/31_IDENTIDADE_KEYCLOAK.md`.
+
+## Publicação parcial Store — 05/11/2026
+
+Clientes comprador/admin da Store habilitados, catálogo público sem senha e preços protegidos por sessão de comprador na API. Administração e console de segurança exigem Google + OTP mínimo 2; comprador não herda esse requisito. Migrações 006/007 e subject administrativo explícito ativados. Política validada com Keycloak real descartável, incluindo pedido de nível menor; jornada humana completa na Store ainda pendente. Ver `ligado-loja/docs/32_ACESSO_PUBLICO_E_IDENTIDADE_STORE.md`, que prevalece sobre os estados de preparação acima.
+
+O broker Google passa a sincronizar o claim de e-mail verificado recebido do Google; backend Store continua recusando claim false/ausente e não há vínculo automático por coincidência de e-mail. Nenhum login, sessão, banco ou integração de SystemOS/Android/Pay foi migrado nesta publicação; Pay continua gateway entre serviços.

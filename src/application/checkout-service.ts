@@ -70,7 +70,7 @@ export class CheckoutService {
 
   private intent(payment: Payment) {
     if (!payment.checkout || payment.provider !== 'infinitepay') throw new PaymentError(409, 'INVALID_CHECKOUT_PAYMENT');
-    return { paymentId: payment.id, receiverId: payment.receiverId, amountCents: payment.amountCents,
+    return { paymentId: payment.id, applicationId: payment.applicationId, receiverId: payment.receiverId, amountCents: payment.amountCents,
       expiresAt: payment.checkout.expiresAt };
   }
 }

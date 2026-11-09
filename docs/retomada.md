@@ -400,3 +400,7 @@ Há mudanças locais anteriores de portal/login/documentos preservadas. Esta rod
 ## Consolidação de 27/10/2026
 
 Produção privada e suporte de coexistência/revogação publicados. A chave operacional Bearer não foi rotacionada. Tipos Node agora alinhados ao runtime 24 (24.19.2); 36 unitários, 26 integrados e contrato aprovados. A publicação coordenada do SystemOS atualiza o manifesto do gateway preservando configuração, recebedor e dados. Conexão de banco restrita e CSP pertencem ao SystemOS; o gateway continua exclusivamente uma API de pagamentos. Não repetir cobranças de teste já confirmadas.
+
+## Preparação Store — 07/11/2026
+
+Implementados localmente webhookApplicationIds e applicationRedirectUrls, mantendo configuração singular e retorno padrão. Testes: 38 unitários, 27 integrados e contrato aprovados. Ver docs/store-integracao.md. Não publicar supondo que a credencial da Store já esteja no gateway: ela foi apenas preparada em pasta privada do operador. Produção Linux preservada. Banco local de teste do Pay parado ao terminar; não reativar escritores Windows. NF-e é etapa final da implementação da loja; gateway não recebe responsabilidades fiscais ou logísticas.

@@ -32,11 +32,11 @@ try {
     checkout = new CheckoutService(repository, connector, settings.receiverId, settings.liveCreationEnabled);
   }
   let notifications:InfinitePayNotifications|undefined;
-  if(checkout&&settings?.webhookApplicationId){
+  if(checkout&&settings&&(settings.webhookApplicationIds?.length||settings.webhookApplicationId)){
     if(!settings.notificationProxyKeyFile)throw new Error('Authenticated notification proxy required.');
     await pool.query('SELECT id,trusted FROM checkout_notifications LIMIT 0');
     await pool.query('SELECT payment_id FROM notification_discard_counts LIMIT 0');
-    notifications=new InfinitePayNotifications(pool,checkout,config.credentials.find(p=>p.applicationId===settings.webhookApplicationId)!);
+    notifications=new InfinitePayNotifications(pool,checkout,[...new Set(settings.webhookApplicationIds??[settings.webhookApplicationId!])].map(id=>config.credentials.find(p=>p.applicationId===id)!));
   }
   const operations=checkout?new PaymentOperations(pool,checkout):undefined;
   if(operations){await pool.query('SELECT id FROM payment_operations LIMIT 0');await pool.query('SELECT operation_id FROM operation_resolutions LIMIT 0');await pool.query('SELECT id FROM bank_refund_reconciliations LIMIT 0');}

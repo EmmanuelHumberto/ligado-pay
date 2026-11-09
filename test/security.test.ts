@@ -168,3 +168,12 @@ test('HTTP errors do not leak database failure, credentials or unknown URL', asy
   const unknown = await api.inject({ url: `/unknown?token=${token}`, headers });
   assert.equal(unknown.statusCode, 404); assert.equal(unknown.body.includes(token), false);
 });
+
+
+test('multi-application notification configuration is explicit, scoped and backward compatible',()=>{
+ const scope={...configuration().credentials[0]!,permissions:['payments:create','payments:read','payments:check']};
+ const raw={...configuration(),provider:'infinitepay',environment:'production',credentials:[scope,{...scope,applicationId:'store-app',keyHash:'e'.repeat(64)}],infinitepay:{receiverId:'receiver-one',handle:'merchant-contract',liveCreationEnabled:false,apiKeyFile:resolve('.local/fixture.dpapi'),redirectUrl:'https://portal.example.com/portal',webhookUrl:'https://portal.example.com/ligado-pay/webhooks/infinitepay',notificationProxyKeyFile:resolve('.local/proxy.dpapi'),webhookApplicationIds:['app-one','store-app'],applicationRedirectUrls:{'store-app':'https://store.example.com/minhas-compras'}}};
+ assert.deepEqual(parseConfig(raw,'test').infinitepay?.webhookApplicationIds,['app-one','store-app']);
+ for(const bad of [['missing-app'],['app-one','app-one'],[]])assert.throws(()=>parseConfig({...raw,infinitepay:{...raw.infinitepay,webhookApplicationIds:bad}},'test'));
+ assert.throws(()=>parseConfig({...raw,infinitepay:{...raw.infinitepay,applicationRedirectUrls:{'unknown-app':'https://store.example.com/'}}},'test'));
+});

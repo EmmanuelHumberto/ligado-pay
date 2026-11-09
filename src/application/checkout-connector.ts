@@ -1,6 +1,7 @@
 /** A reserved, durable gateway intent, not a browser-supplied commercial order. */
 export interface CheckoutIntent {
   paymentId: string;
+  applicationId?: string;
   receiverId: string;
   amountCents: number;
   expiresAt: string;

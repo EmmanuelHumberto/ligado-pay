@@ -148,3 +148,14 @@ test('check failures are sanitized and only fixed official endpoints are request
     'content-type': 'application/json', 'content-length': '999999',
   } })).checkPayment(p, hints), { code: 'UNSAFE_PROVIDER_RESPONSE' });
 });
+
+
+test('application return is selected only from server configuration without changing the legacy default',async()=>{
+ const routes={'store-app':'https://store.example.com/minhas-compras'};
+ const connector=new InfinitePayCheckout({...account,applicationRedirectUrls:routes},new InfinitePayTransport('synthetic',async(_url,options)=>{
+  const body=JSON.parse(String(options.body));assert.equal(body.redirect_url,routes['store-app']);
+  return json({url:'https://checkout.infinitepay.io/'+account.handle+'/fixture'});
+ }),()=>Date.parse('2026-10-25T12:00:00Z'));
+ await connector.createLink({...intent(),applicationId:'store-app'});
+ assert.throws(()=>new InfinitePayCheckout({...account,applicationRedirectUrls:{'store-app':'http://attacker.invalid/'}},new InfinitePayTransport('synthetic',async()=>json({}))));
+});

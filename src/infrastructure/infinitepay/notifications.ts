@@ -27,15 +27,21 @@ export function notificationHints(value:unknown):CheckoutHints {
 export class InfinitePayNotifications {
   private timer:ReturnType<typeof setInterval>|undefined;
   private active:Promise<void>|undefined;
-  constructor(private readonly pool:Pool,private readonly service:CheckoutService,private readonly principal:Principal) {
-    if(!principal.permissions.includes('payments:read')||!principal.permissions.includes('payments:check')||
-      principal.receiverIds.length!==1)throw new Error('Notification identity must be explicitly scoped.');
+  private readonly principals:Principal[];
+  constructor(private readonly pool:Pool,private readonly service:CheckoutService,principals:Principal|Principal[]) {
+    this.principals=Array.isArray(principals)?principals:[principals];
+    if(!this.principals.length||new Set(this.principals.map(p=>p.applicationId)).size!==this.principals.length||this.principals.some(p=>!p.permissions.includes('payments:read')||!p.permissions.includes('payments:check')||p.receiverIds.length!==1))throw new Error('Notification identity must be explicitly scoped.');
+  }
+  private async owned(id:string){
+    for(const principal of this.principals){
+      try{return {principal,payment:await this.service.get(principal,id)};}
+      catch(e){if(!(e instanceof PaymentError&&e.code==='PAYMENT_NOT_FOUND'))throw e;}
+    }
+    return null;
   }
 
   async enqueue(hints:CheckoutHints,trusted=false) {
-    let payment;
-    try{payment=await this.service.get(this.principal,hints.orderNsu);}
-    catch(error){if(error instanceof PaymentError&&error.code==='PAYMENT_NOT_FOUND')return;throw error;}
+    const owned=await this.owned(hints.orderNsu);if(!owned)return;const {payment}=owned;
     if(payment.state==='PAID_PIX'||payment.state==='REVIEW_REQUIRED')return;
     this.service.validateInvoice(payment,hints);
     const db=await this.pool.connect();
@@ -48,14 +54,17 @@ export class InfinitePayNotifications {
     }catch(error){await db.query('ROLLBACK').catch(()=>undefined);throw error;}finally{db.release();}
   }
   async notice(operations:PaymentOperations,id:string,kind:'REFUND_NOTICE'|'CANCEL_NOTICE'){
-    await operations.notice(this.principal,id,kind);
+    const owned=await this.owned(id);if(owned)await operations.notice(owned.principal,id,kind);
   }
 
   async tick() {
+    for(const principal of this.principals)await this.tickPrincipal(principal);
+  }
+  private async tickPrincipal(principal:Principal) {
     await this.pool.query(`UPDATE checkout_notifications n SET state='FAILED',lease_token=NULL,lease_until=NULL
       FROM payments p WHERE p.id=n.payment_id AND p.application_id=$1 AND p.receiver_id=$2
         AND p.provider_account=$3 AND n.state='PENDING' AND n.attempts>=8 AND (n.lease_until IS NULL OR n.lease_until<clock_timestamp())`,
-    [this.principal.applicationId,this.principal.receiverIds[0],this.service.operationalAccount]);
+    [principal.applicationId,principal.receiverIds[0],this.service.operationalAccount]);
     const lease=randomUUID();
     const selected=await this.pool.query<{id:string;payment_id:string;transaction_nsu:string;invoice_slug:string;attempts:number}>(`
       WITH due AS (SELECT n.id FROM checkout_notifications n JOIN payments p ON p.id=n.payment_id
@@ -65,11 +74,11 @@ export class InfinitePayNotifications {
         ORDER BY n.trusted DESC,n.next_check_at,n.id FOR UPDATE OF n SKIP LOCKED LIMIT 1)
       UPDATE checkout_notifications n SET lease_token=$4,lease_until=clock_timestamp()+interval '30 seconds',
         attempts=attempts+1 FROM due WHERE n.id=due.id RETURNING n.*`,
-    [this.principal.applicationId,this.principal.receiverIds[0],this.service.operationalAccount,lease]);
+    [principal.applicationId,principal.receiverIds[0],this.service.operationalAccount,lease]);
     const job=selected.rows[0];if(!job)return;
     let done=false;
     try{
-      const payment=await this.service.check(this.principal,job.payment_id,
+      const payment=await this.service.check(principal,job.payment_id,
         {orderNsu:job.payment_id,transactionNsu:job.transaction_nsu,slug:job.invoice_slug});
       done=payment.state==='PAID_PIX'||payment.state==='REVIEW_REQUIRED';
     }catch{/* Keep uncertainty and retry; never create, refund, or assume a failed payment. */}
