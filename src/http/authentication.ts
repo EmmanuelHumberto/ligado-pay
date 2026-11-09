@@ -3,7 +3,7 @@ import type { Credential } from '../config.js';
 import type { Principal } from '../domain/payment.js';
 
 export function authenticate(header: string | undefined, credentials: readonly Credential[], now = Date.now()): Principal | null {
-  if (!header || !/^Bearer [A-Za-z0-9_-]{43}$/.test(header)) return null;
+  if (!header || !/^Bearer (?:[A-Za-z0-9_-]{43}|[a-f0-9]{64})$/.test(header)) return null;
   const hash = createHash('sha256').update(header.slice(7)).digest();
   let found: Credential | undefined;
   for (const credential of credentials) {

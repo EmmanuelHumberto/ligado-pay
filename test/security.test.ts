@@ -177,3 +177,13 @@ test('multi-application notification configuration is explicit, scoped and backw
  for(const bad of [['missing-app'],['app-one','app-one'],[]])assert.throws(()=>parseConfig({...raw,infinitepay:{...raw.infinitepay,webhookApplicationIds:bad}},'test'));
  assert.throws(()=>parseConfig({...raw,infinitepay:{...raw.infinitepay,applicationRedirectUrls:{'unknown-app':'https://store.example.com/'}}},'test'));
 });
+
+test('service authentication accepts Store hex tokens and keeps legacy base64url tokens',()=>{
+ const credentials=parseConfig(configuration(),'test').credentials;
+ for(const format of ['hex','base64url'] as const){
+  const key=randomBytes(32).toString(format);
+  const configured={...credentials[0]!,keyHash:createHash('sha256').update(key).digest('hex')};
+  assert.equal(authenticate('Bearer '+key,[configured])?.applicationId,configured.applicationId);
+  for(const wrong of [key+'x',key+' ',key.slice(1),'A'.repeat(64)])assert.equal(authenticate('Bearer '+wrong,[configured]),null);
+ }
+});
