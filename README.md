@@ -1,5 +1,7 @@
 # Ligado Pay
 
+Integração Store conectada ao gateway em 09/11/2026, com credencial exclusiva e TLS privado. A loja ainda não tem checkout comercial liberado. [Publicação e limites](docs/store-integracao.md).
+
 > Arquitetura de 04/11/2026: [identidade compartilhada Ligado](docs/IDENTIDADE_COMPARTILHADA_2026-11-04.md) para SystemOS, Android e LIGADO STORE, com sessões e permissões próprias. Ligado Pay permanece com autenticação entre serviços. Decisão documentada; SSO ainda não implementado e logins atuais preservados.
 
 Documentação vigente: [estado do sistema](docs/ESTADO_ATUAL.md), [índice completo](docs/INDICE.md) e [status da segunda crítica](../os-system-web/docs/REVISAO_CRITICA_STATUS.md).

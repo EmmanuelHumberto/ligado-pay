@@ -13,3 +13,11 @@ Foi preparado um novo token de serviço exclusivo da Store, ainda não cadastrad
 Validação: 38 unitários, 27 integrados e contrato aprovados. Há teste com duas aplicações habilitadas e uma terceira fora da lista, confirmação independente, ausência de acesso cruzado e retorno por configuração do servidor. Banco de teste exclusivo em loopback, parado após os testes. Nenhuma operação financeira real, migração ou publicação nesta rodada.
 
 Permanecem pendentes: publicação coordenada, registro da identidade da Store, verificação do canal e homologação autorizada. Cartão, renovação após vencimento e fallback de retorno da Store continuam exigindo conclusão; não declarar o gateway comercialmente homologado para a loja por esses testes.
+
+## Conexão publicada — 09/11/2026, 21h26 de São Paulo
+
+Gateway atualizado para `3c933e05529f78893abc5dd51789779f2b9a5b33`, imagem `sha256:8fbdaba481b6c503ec671e66d9786637fda317b5ece35055025affe046e57245`. Aplicação `ligado-store` cadastrada com credencial própria; retorno fixo e roteamento de notificações habilitados, preservando a URL do webhook e as credenciais do SystemOS. A comparação criptográfica aceita o token hexadecimal de 256 bits da Store e mantém os tokens base64url existentes.
+
+A Store autenticou pelo canal TLS privado do VPS. Requisições com credencial inválida e origem de navegador foram recusadas. A credencial Store não conseguiu ler nem recuperar referência do pagamento existente do SystemOS; o consumidor SystemOS continuou lendo seu estado/valor corretamente. Zero pagamentos Store criados na validação. 39 unitários aprovados; 27 integrações da candidata multiaplicação aprovadas em banco descartável, sem provedor real.
+
+O gateway continua somente de pagamentos. O checkout comercial da Store permanece bloqueado por Correios/fiscal e homologação financeira própria. Não houve anúncio de cartão homologado, criação de cobrança ou alteração de dados financeiros. Operação/evidências: `../ligado-loja/docs/77_CONEXAO_PRIVADA_PAY_STORE.md` e `../ligado-loja/docs/STORE_PAY_CONEXAO_2026-11-09.json`.
