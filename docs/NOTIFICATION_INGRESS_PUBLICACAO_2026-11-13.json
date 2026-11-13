@@ -1,0 +1,122 @@
+{
+  "initialReceipt": {
+    "result": "PUBLISHED",
+    "executedAt": "2026-11-13T01:52:17.021259+00:00",
+    "buildId": "840b1d88-d535-485d-95e4-0c72a4cb6b28",
+    "ingressImage": "sha256:fc55f24105713525a434b6322c09cab87b33914d9fafef254b57ced0493adbf9",
+    "sourceSha256": "276e226e8ee4890800500ebafbd19501d111895783e30869dabd4f6e6a05ea40",
+    "localProof": {
+      "signedInvalidHintReachedGatewayAndWasRejected": true,
+      "unsignedDirectGatewayDenied": true,
+      "paymentCreationRouteUnavailable": true,
+      "ingressCannotReachDatabasesStorageOrSsh": true,
+      "onlyProxyKeyMounted": true,
+      "runtimeFirewallAuditPassed": true
+    },
+    "backupBefore": {
+      "result": "PASSOU",
+      "executedAt": "2026-11-13T01:50:38.427Z",
+      "backupCreatedAt": "2026-11-13T01:50:03.849Z",
+      "tables": 86,
+      "rows": 237815,
+      "objects": 357,
+      "databaseDataHashesMatch": true,
+      "sequencesMatch": true,
+      "restoredObjectHashesMatch": true,
+      "customerDocumentsDecrypted": 63,
+      "productionModified": false
+    },
+    "backupAfter": {
+      "result": "PASSOU",
+      "executedAt": "2026-11-13T01:51:46.508Z",
+      "backupCreatedAt": "2026-11-13T01:51:12.752Z",
+      "tables": 86,
+      "rows": 237817,
+      "objects": 357,
+      "databaseDataHashesMatch": true,
+      "sequencesMatch": true,
+      "restoredObjectHashesMatch": true,
+      "customerDocumentsDecrypted": 63,
+      "productionModified": false
+    },
+    "previousApplicationContainersPreserved": true,
+    "providerUrlChanged": false,
+    "providerCredentialsChanged": false,
+    "applicationImagesChanged": false,
+    "financialOperationExecuted": false,
+    "driveSynchronizationExecuted": false,
+    "networkCases": 128,
+    "linuxIngressTests": 8
+  },
+  "recovery": {
+    "result": "RECOVERED_AND_VERIFIED",
+    "checkedAt": "2026-11-13T03:44:09.939423+00:00",
+    "cause": "atomic replacement lost service file ownership",
+    "configOwnershipCorrected": true,
+    "tunnelReady": true,
+    "serviceIdentityValidationPassed": true,
+    "publicationRegressionTestsPassed": 4,
+    "localProof": {
+      "signedInvalidHintReachedGatewayAndWasRejected": true,
+      "unsignedDirectGatewayDenied": true,
+      "paymentCreationRouteUnavailable": true,
+      "ingressCannotReachDatabasesStorageOrSsh": true,
+      "onlyProxyKeyMounted": true,
+      "runtimeFirewallAuditPassed": true
+    },
+    "appliedScriptSha256": "66b9a0d1eebe396d408f81b0d6af4e8f6e071c0cf3f32c0cc0da0dd5948bf3be",
+    "correctedScriptSha256": "129028a92e95209f7eb73e8f6f6edf9f515d06b19fe62eaea288ae8019a2d3a0",
+    "financialOperationExecuted": false
+  },
+  "syntheticPaymentAbsentBeforeProbe": true,
+  "finalCheckedAt": "2026-11-13T03:49:29.891180+00:00",
+  "publicationRegressionTestsPassed": 4,
+  "finalRuntimeAudit": {
+    "result": "PASSOU",
+    "ruleIntegrityVerified": true,
+    "runtimeIdentitiesVerified": true
+  },
+  "publicProbes": [
+    {
+      "url": "https://os.ligadotattoo.com.br/ligado-pay/webhooks/infinitepay",
+      "status": 400,
+      "body": {
+        "error": "NOTIFICATION_NOT_ACCEPTED"
+      }
+    },
+    {
+      "url": "https://os.ligadotattoo.com.br/ligado-pay/webhooks/infinitepay",
+      "status": 200,
+      "body": {
+        "accepted": true
+      }
+    },
+    {
+      "url": "https://os.ligadotattoo.com.br/api/versao",
+      "status": 200,
+      "body": null
+    },
+    {
+      "url": "https://os.ligadotattoo.com.br/portal",
+      "status": 200,
+      "body": null
+    },
+    {
+      "url": "https://os.ligadotattoo.com.br/api/v1/portal/ordens",
+      "status": 401,
+      "body": null
+    },
+    {
+      "url": "https://store.ligadotattoo.com.br/api/v1/categories",
+      "status": 200,
+      "body": null
+    }
+  ],
+  "result": "RECOVERED_AND_PUBLICLY_VERIFIED",
+  "syntheticNotificationAcceptedWithoutPaymentOrQueue": true,
+  "initialPublicationFailedPublicAccess": true,
+  "linuxIngressTests": 8,
+  "linuxPublicationRegressionTests": 4,
+  "isolatedNetworkCases": 128,
+  "realFinancialOperationExecuted": false
+}

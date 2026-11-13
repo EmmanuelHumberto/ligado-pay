@@ -1,0 +1,23 @@
+name: ligado-notification
+services:
+  ingress:
+    image: ${NOTIFICATION_IMAGE:?Pinned notification image required}
+    pull_policy: never
+    user: '10009:10009'
+    network_mode: host
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 64
+    mem_limit: 96m
+    cpus: 0.25
+    init: true
+    tmpfs: ['/tmp:size=16777216,mode=1777']
+    environment:
+      LIGADO_NOTIFICATION_KEY_FILE: /run/ligado/notification-key
+    volumes:
+      - ${NOTIFICATION_PRIVATE_DIR:?Private directory required}/notification-key:/run/ligado/notification-key:ro
+    logging:
+      driver: json-file
+      options: {max-size: '2m', max-file: '3'}

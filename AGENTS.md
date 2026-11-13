@@ -17,3 +17,9 @@ O usuário determinou que o Ligado Pay seja unicamente uma API de gateway de pag
 - O primeiro uso é privado, na aprovação de serviços do SystemOS, portal e app. Não abrir cadastro público de recebedores. Ler docs/arquitetura-seguranca-inicial.md e docs/provedores.md antes de implementar.
 - Não implementar um falso conector Pix direto com o Banco Central. Cobranças usam API oficial de PSP contratado. Documentação pública não equivale a homologação ou elegibilidade contratual.
 - Prioridade atual: InfinitePay. Ler docs/infinitepay.md. O usuário criou a chave e informou que não existe seleção de sandbox na conta; não insistir que obtenha sandbox ou resposta do suporte para desenvolver. Prosseguir com a documentação disponível, testes locais e limitações explícitas. Antes de qualquer operação real, apresentar a operação concreta e seus efeitos para autorização. A configuração local selecionável não comprova homologação real nem autorização de cobrança; manter criação real desligada por padrão.
+
+## Regra obrigatoria de versionamento e publicacao
+
+- Determinacao do titular em 13/11/2026: Git deve estar completo e corresponder ao VPS. Antes de publicar qualquer codigo, migracao, script ou configuracao operacional, testar, fazer commit, enviar ao remoto e confirmar o SHA remoto. Nao publicar arquivos de trabalho nao commitados nem fazer patches somente no VPS.
+- Publicar a partir da revisao identificada e registrar commit de origem, hashes dos arquivos/imagens, ambiente e resultado da verificacao. Documentar configuracoes recuperaveis e registrar a versao ativa; divergencia entre Git e VPS impede nova publicacao ate conciliacao. Nao reescrever a procedencia de binarios antigos como se tivessem sido reconstruidos.
+- Segredos, certificados, chaves, dados pessoais, volumes e dumps nao entram no Git. Restauracao completa exige tambem backups cifrados, chaves separadas, imagens reconstruiveis e procedimento de recuperacao testado.

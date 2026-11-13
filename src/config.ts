@@ -11,6 +11,7 @@ export interface Credential extends Principal {
 }
 export interface Config {
   mode: 'local' | 'private-production';
+  networkProfile?: 'private-container-v1';
   databaseUrl: string;
   port: number;
   credentials: Credential[];
@@ -39,7 +40,11 @@ export function parseConfig(value: unknown, nodeEnv: string | undefined): Config
   if (typeof raw['databaseUrl'] !== 'string' || !integer(raw['port'], 1024, 65535)) return fail();
   let url: URL;
   try { url = new URL(raw['databaseUrl']); } catch { return fail(); }
-  if (url.protocol !== 'postgresql:' || url.hostname !== '127.0.0.1' ||
+  const containerNetwork=raw['networkProfile']==='private-container-v1';
+  if(raw['networkProfile']!==undefined&&!containerNetwork)return fail();
+  if(containerNetwork&&(!privateProduction||!infinite||raw['port']!==3305||url.hostname!=='pay-db'||
+    url.port!=='55439'||url.pathname!=='/ligado_pay_local'||url.username!=='ligado_pay_runtime'))return fail();
+  if (url.protocol !== 'postgresql:' || (!containerNetwork&&url.hostname !== '127.0.0.1') ||
       !/^\/ligado_pay_[a-z0-9_]+$/.test(url.pathname) || !url.username || !url.password || url.search || url.hash) return fail();
   if (!Array.isArray(raw['credentials']) || !raw['credentials'].length || raw['credentials'].length > 20) return fail();
   const hashes = new Set<string>();
@@ -95,6 +100,7 @@ export function parseConfig(value: unknown, nodeEnv: string | undefined): Config
   }
   const result: Config = { mode: privateProduction ? 'private-production' : 'local', databaseUrl: raw['databaseUrl'], port: raw['port'], credentials,
     provider: infinite ? 'infinitepay' : 'simulated' };
+  if(containerNetwork)result.networkProfile='private-container-v1';
   if (infinite) {
     const c = raw['infinitepay'] as Record<string, unknown> | undefined;
     if (!c || typeof c['receiverId'] !== 'string' || !identifier.test(c['receiverId']) ||

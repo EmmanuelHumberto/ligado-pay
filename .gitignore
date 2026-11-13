@@ -9,3 +9,5 @@ coverage/
 work/
 .local/
 /infinitepay-entrada.txt
+__pycache__/
+*.py[cod]

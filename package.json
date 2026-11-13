@@ -8,8 +8,9 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "npm run build && node --test dist/test/*.test.js",
+    "test": "npm run build && node --test dist/test/*.test.js && node --test test/notification-ingress.test.mjs",
     "test:integration": "npm run build && node --test dist/test/*.integration.js",
+    "test:infra": "python scripts/test-notification-publication.py",
     "contract:generate": "npm run build && node scripts/contract.mjs",
     "contract:check": "npm run build && node scripts/contract.mjs --check",
     "start": "node dist/src/main.js",

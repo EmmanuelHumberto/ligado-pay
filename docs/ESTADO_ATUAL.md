@@ -1,12 +1,27 @@
 # Estado atual do Ligado Pay
 
-Atualizado em 03/11/2026. API privada de gateway de pagamentos, sem frontend, regras de OS ou tabelas compartilhadas com consumidores. InfinitePay é o provedor integrado; SystemOS e Android usam o gateway por meio do backend autorizado. [Índice](INDICE.md) e [painel dos três sistemas](../../os-system-web/docs/ESTADO_ECOSSISTEMA.md).
+Às 17h32 de 13/11/2026, web SystemOS isolada e encaminhamento DNS pelo host
+corrigido na web/banco/arquivos. Consumidores Pay revalidados; imagem,
+credenciais e regras financeiras preservadas.
+[Estado vigente](../../os-system-web/docs/SYSTEMOS_WEB_REDE_PRIVADA_2026-11-13.md).
+
+Às 17h17 de 13/11/2026, banco/arquivos SystemOS foram separados em bridges
+próprias. Pay e suas credenciais/imagens foram preservados; prontidão autenticada,
+notificações e conexão da Store passaram novamente, sem operação financeira.
+[Publicação e recuperação verificadas](../../os-system-web/docs/SYSTEMOS_DADOS_REDES_PRIVADAS_2026-11-13.md).
+
+Atualizado em 13/11/2026. API privada de gateway de pagamentos, sem frontend, regras de OS ou tabelas compartilhadas com consumidores. InfinitePay é o provedor integrado; SystemOS e Android usam o gateway por meio do backend autorizado. [Índice](INDICE.md) e [painel dos três sistemas](../../os-system-web/docs/ESTADO_ECOSSISTEMA.md).
+
+Pay e PostgreSQL Pay publicados em bridges próprias às 15h34 de 13/11, mantendo
+os consumidores e a API privada em loopback. Backup/restauração antes/depois e
+verificações públicas aprovados; sem pagamento de teste.
+[Entrega ativa e limites](../../os-system-web/docs/PAY_REDE_PRIVADA_PUBLICACAO_2026-11-13.md).
 
 Produção privada migrada para o VPS Debian 13 em 03/11, junto ao SystemOS, com banco, papel e UID separados. Escritores Windows desativados; dados legados preservados. Backup de produção Linux, restauração isolada e cópia cifrada externa conferidos. [Corte e evidências](../../os-system-web/docs/VPS_PRODUCAO_2026-11-03.md). A etapa sintética anterior permanece em [VPS Linux](VPS_LINUX.md).
 
 ## Operação vigente
 
-Produção em `ligado-production-gateway-1`, UID `10003:10003`, modo private-production e NODE_ENV=production. Imagem `ligado/pay:93e9274b3366af9a00f5579069d8503899bce9c6-41565924386-1`; banco `ligado_pay_local` separado, em loopback 55439, sob `ligado_pay_runtime` sem superusuário/bypass. A API em 3305 permanece privada. Configuração da aplicação/recebedor, chaves, idempotência e dados existentes foram preservados; não foi criada cobrança/devolução para validar o corte. O manifesto Windows `4ce5919` é histórico.
+Produção em `ligado-production-gateway-1`, UID `10003:10003`, modo private-production e NODE_ENV=production, perfil `private-container-v1`. Imagem `sha256:23fd54fc83602e76320acc1c3f805db03ca1bb05ebc61a57d3f5fa394c59d9ee`; banco `ligado_pay_local` somente na bridge própria, em `pay-db:55439`, sob `ligado_pay_runtime` sem superusuário/bypass. A API publicada em `127.0.0.1:3305` permanece privada. Configuração da aplicação/recebedor, chaves, idempotência e dados existentes foram preservados; não foi criada cobrança/devolução para validar o corte. Os manifestos Windows e imagens anteriores são históricos.
 
 Pix tem confirmação automática por consulta ao provedor. O checkout pode oferecer cartão, mas isso não comprova liquidação automática nem homologação de cartão/3DS; cartão permanece em conferência. Devoluções/cancelamentos do dinheiro são feitos na conta InfinitePay. Intenções e registros internos não movimentam dinheiro por si só. [Operação Pix](operacao-pix.md).
 

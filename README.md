@@ -1,5 +1,11 @@
 # Ligado Pay
 
+Pay e banco publicados em redes privadas em 13/11/2026, com consumidores e
+backup/restauração verificados. API segue privada em loopback, sem operação
+financeira de teste. [Publicação e limites](../os-system-web/docs/PAY_REDE_PRIVADA_PUBLICACAO_2026-11-13.md).
+
+Entrada Linux de notificações corrigida e acesso público recuperado em 13/11/2026. Receptor dedicado sem credenciais bancárias, mantendo URL e verificação financeira existentes. [Publicação, incidente e validação](docs/NOTIFICATION_INGRESS_LINUX_2026-11-13.md).
+
 Integração Store conectada ao gateway em 09/11/2026, com credencial exclusiva e TLS privado. A loja ainda não tem checkout comercial liberado. [Publicação e limites](docs/store-integracao.md).
 
 > Arquitetura de 04/11/2026: [identidade compartilhada Ligado](docs/IDENTIDADE_COMPARTILHADA_2026-11-04.md) para SystemOS, Android e LIGADO STORE, com sessões e permissões próprias. Ligado Pay permanece com autenticação entre serviços. Decisão documentada; SSO ainda não implementado e logins atuais preservados.
